@@ -1,0 +1,75 @@
+<Table-Card
+            @register="register"
+            {#    instance_name="table_reports"#}
+
+            header='Reports'
+            :table_attributes="{
+            'data-page-size': 10,
+            id: 'table_reports'
+        }"
+            container_classes="my-3"
+
+    >
+        <template #actions="{master}">
+            <div class="d-flex justify-content-end">
+                <button class="btn btn-secondary mr-2">Compare</button>
+                <div class="d-flex">
+                    <select class="selectpicker btn-secondary_item__left" data-style="btn_item__left">
+                        <option value="Default">Default</option>
+                    </select>
+                    <div class="dropdown dropdown_action">
+                        <button class="btn dropdown-toggle btn-secondary_item__right"
+                                role="button"
+                                id="result_edit"
+                                data-toggle="dropdown"
+                                aria-expanded="false">
+                            <i class="fa fa-cog"></i>
+                        </button>
+
+                        <ul class="dropdown-menu" aria-labelledby="result_edit">
+                            <li class="dropdown-item">
+                                <i class='fa fa-edit mr-2'></i>Some Action
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </template>
+        <template #table_headers="{master}">
+            <th scope="col" data-checkbox="true"></th>
+            <th data-visible="false" data-field="id">index</th>
+            <th scope="col" data-sortable="true" data-field="name"
+                data-cell-style="report_formatters.name"
+            >
+                Name
+            </th>
+            <th scope="col" data-sortable="true" data-field="start"
+                data-cell-style="report_formatters.start"
+            >
+                Start
+            </th>
+            <th scope="col" data-sortable="true" data-field="group">
+                Group
+            </th>
+            <th scope="col" data-sortable="true" data-field="env">
+                Env
+            </th>
+            <th scope="col" data-sortable="true" data-field="error_rate">
+                Error Rate
+            </th>
+            <th scope="col" data-sortable="true" data-field="duration">
+                Duration
+            </th>
+            <th scope="col" data-sortable="true" data-field="duration"
+                data-cell-style="report_formatters.tag"
+            >
+                Tag
+            </th>
+            <th scope="col" data-sortable="true" data-field="status"
+                data-cell-style="report_formatters.status"
+            >
+                Status
+            </th>
+        </template>
+
+    </Table-Card>

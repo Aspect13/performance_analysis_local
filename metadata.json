@@ -1,0 +1,6 @@
+{
+  "name": "performance_analysis",
+  "version": "0.1",
+  "depends_on": ["shared", "auth", "theme", "projects"],
+  "init_after": ["backend_performance", "ui_performance"]
+}

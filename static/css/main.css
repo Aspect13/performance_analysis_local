@@ -1,0 +1,7 @@
+.selectpicker-titled:not(.selectpicker-titled) {
+    margin-right: 0.5rem;
+}
+.selectpicker-titled:not(.selectpicker-titled:first-child) {
+    margin-left: 0.5rem;
+}
+
