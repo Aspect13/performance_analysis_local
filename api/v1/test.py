@@ -18,7 +18,7 @@ class API(Resource):
         for g in groups_to_poll:
             for i in self.module.group_mapping_reversed.get(g, []):
                 rpc_result = self.module.context.rpc_manager.call_function_with_timeout(
-                    func=f'performance_analysis_tests_{i.lower()}',
+                    func=f'performance_analysis_tests_{i}',
                     timeout=5,
                     project_id=project.id,
                     **request.args

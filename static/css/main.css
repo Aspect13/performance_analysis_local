@@ -5,3 +5,9 @@
     margin-left: 0.5rem;
 }
 
+.colorful-cards .col:first-child {
+    padding-left: 0;
+}
+.colorful-cards .col:last-child {
+    padding-right: 0;
+}

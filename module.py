@@ -36,7 +36,7 @@ class Module(module.ModuleModel):
         }
         self.group_mapping_reversed = defaultdict(set)
         for k, v in self.group_mapping.items():
-            self.group_mapping_reversed[v.lower()].add(k)
+            self.group_mapping_reversed[v].add(k)
 
     def init(self):
         """ Init module """
@@ -90,8 +90,8 @@ class Module(module.ModuleModel):
         # self.descriptor.deinit_rpcs()
 
     @property
-    def active_plugins(self) -> list:
-        return ['backend_performance', 'ui_performance']
+    def active_plugins(self) -> set:
+        return {'backend_performance', 'ui_performance'}
 
     @property
     def groups(self) -> set:
