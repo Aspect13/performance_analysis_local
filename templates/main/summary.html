@@ -16,10 +16,18 @@
 
         {# charts #}
         <div class="d-flex justify-content-between my-3">
-            <div class="mr-1" style="border: 1px solid gray; height: 350px; flex-grow: 1;"><canvas></canvas></div>
-            <div class="mx-1" style="border: 1px solid gray; height: 350px; flex-grow: 1;"><canvas></canvas></div>
-            <div class="mx-1" style="border: 1px solid gray; height: 350px; flex-grow: 1;"><canvas></canvas></div>
-            <div class="ml-1" style="border: 1px solid gray; height: 350px; flex-grow: 1;"><canvas></canvas></div>
+            <div class="mr-1 chart-container">
+                <canvas id="throughput_chart"></canvas>
+            </div>
+            <div class="mx-1 chart-container">
+                <canvas id="error_rate_chart"></canvas>
+            </div>
+            <div class="mx-1 chart-container">
+                <canvas id="response_time_chart"></canvas>
+            </div>
+            <div class="ml-1 chart-container">
+                <canvas id="page_speed_chart"></canvas>
+            </div>
         </div>
     </div>
 </div>

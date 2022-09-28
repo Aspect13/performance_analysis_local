@@ -43,6 +43,7 @@ class BackendAnalysisModel(BaseModel):
     aggregation_pct90: float
     aggregation_pct95: float
     aggregation_pct99: float
+    throughput: float
     aggregations: Optional[Dict] = {}
     tags: Optional[List[str]] = []
     error_rate: Optional[float]
@@ -134,6 +135,7 @@ class RPC:
             ('aggregation_pct90', APIReport.pct90),
             ('aggregation_pct95', APIReport.pct95),
             ('aggregation_pct99', APIReport.pct99),
+            ('throughput', APIReport.throughput),
             ('status', APIReport.test_status['status']),
             ('duration', APIReport.duration),
             ('total', APIReport.total),
