@@ -9,7 +9,7 @@ from ...ui_performance.models.ui_tests import UIPerformanceTest
 from pydantic import BaseModel, validator, parse_obj_as
 from datetime import datetime
 from typing import Optional, List, Dict
-from sqlalchemy import JSON, cast, Integer, String, literal_column, desc, func
+from sqlalchemy import JSON, cast, Integer, String, literal_column, desc, asc, func
 from collections import OrderedDict
 
 class UIAnalysisModel(BaseModel):
@@ -28,7 +28,7 @@ class UIAnalysisModel(BaseModel):
 class BackendAnalysisModel(BaseModel):
     group: str
     name: str
-    start_time: datetime
+    start_time: str
     test_type: str
     test_env: str
     status: str
@@ -152,7 +152,7 @@ class RPC:
             func.lower(APIReport.test_status['status'].cast(String)).in_(('"finished"', '"failed"', '"success"'))
             # APIReport.test_status['status'].in_(('Finished', 'Failed', 'Success'))
         ).order_by(
-            desc(APIReport.start_time)
+            asc(APIReport.start_time)
         )  # todo: sort by time asc
 
         if end_time:
@@ -162,9 +162,16 @@ class RPC:
             BackendAnalysisModel.parse_obj(dict(zip(columns.keys(), i)))
             for i in query.all()
         )
-        return list(map(lambda i: i.dict(exclude={
+        # return list(map(lambda i: i.dict(exclude={
+        #     'total', 'failures', *(i for i in columns.keys() if i.startswith('aggregation_'))
+        # }), result))
+        r = []
+        for i in map(lambda i: i.dict(exclude={
             'total', 'failures', *(i for i in columns.keys() if i.startswith('aggregation_'))
-        }), result))
+        }), result):
+            for _ in range(100):
+                r.append(i)
+        return r
 
     @web.rpc('performance_analysis_test_runs_ui_performance')
     @rpc_tools.wrap_exceptions(RuntimeError)

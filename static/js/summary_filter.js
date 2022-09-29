@@ -97,7 +97,7 @@ const SummaryFilter = {
             selected_test_types: [],
             test_envs: [],
             selected_test_envs: [],
-            selected_aggregation_backend: 'min',
+            selected_aggregation_backend: 'pct95',
             aggregation_backend_name_map: {},
             selected_aggregation_ui: 'min',
             aggregation_ui_name_map: {},
@@ -193,7 +193,7 @@ const SummaryFilter = {
         },
         async start_time(newValue) {
             await this.fetch_data()
-        }
+        },
     },
     methods: {
         refresh_pickers() {
@@ -216,21 +216,24 @@ const SummaryFilter = {
         handle_apply_click() {
             vueVm.registered_components.table_reports?.table_action('load', this.filtered_tests)
 
-            const ctx = document.getElementById('throughput_chart').getContext('2d')
-            // const gradient = ctx.createLinearGradient(20, 0, 220, 0);
-            // // Add three color stops
-            // gradient.addColorStop(0, "green");
-            // gradient.addColorStop(0.5, "cyan");
-            // gradient.addColorStop(1, "red");
-            const gradientStroke = ctx.createLinearGradient(0, 0, 350, 0);
-            gradientStroke.addColorStop(0, 'red')
-            gradientStroke.addColorStop(0.2, 'orange')
-            gradientStroke.addColorStop(0.3, 'yellow')
-            gradientStroke.addColorStop(0.5, 'green')
-            gradientStroke.addColorStop(0.7, 'cyan')
-            gradientStroke.addColorStop(0.8, 'blue')
-            gradientStroke.addColorStop(1, 'purple')
+            this.handle_update_charts()
+
+        },
+        handle_update_charts() {
+            const get_gradient = chart_obj => {
+                const gradient = chart_obj.ctx.createLinearGradient(0, 0, 350, 100)
+                gradient.addColorStop(0, 'red')
+                gradient.addColorStop(0.2, 'orange')
+                gradient.addColorStop(0.3, 'yellow')
+                gradient.addColorStop(0.5, 'green')
+                gradient.addColorStop(0.7, 'cyan')
+                gradient.addColorStop(0.8, 'blue')
+                gradient.addColorStop(1, 'purple')
+                return gradient
+            }
+
             // todo: filter only tests with throughput (only backend)
+            let gradientStroke = get_gradient(window.charts.throughput)
             window.charts.throughput.data = {
                 datasets: [{
                     borderColor: gradientStroke,
@@ -240,9 +243,11 @@ const SummaryFilter = {
                     pointHoverBorderColor: gradientStroke,
                     data: this.filtered_tests.map(i => i.throughput)
                 }],
-                labels: this.filtered_tests.map(i => i.name),
-
+                labels: this.filtered_tests.map(i => i.start_time),
             }
+            window.charts.throughput.update()
+
+            gradientStroke = get_gradient(window.charts.error_rate)
             window.charts.error_rate.data = {
                 datasets: [{
                     borderColor: gradientStroke,
@@ -252,9 +257,12 @@ const SummaryFilter = {
                     pointHoverBorderColor: gradientStroke,
                     data: this.filtered_tests.map(i => i.error_rate)
                 }],
-                labels: this.filtered_tests.map(i => i.name),
+                labels: this.filtered_tests.map(i => i.start_time),
 
             }
+            window.charts.error_rate.update()
+
+            gradientStroke = get_gradient(window.charts.response_time)
             window.charts.response_time.data = {
                 datasets: [{
                     borderColor: gradientStroke,
@@ -264,11 +272,8 @@ const SummaryFilter = {
                     pointHoverBorderColor: gradientStroke,
                     data: this.filtered_tests.map(i => i.aggregations.mean)
                 }],
-                labels: this.filtered_tests.map(i => i.name),
+                labels: this.filtered_tests.map(i => i.start_time),
             }
-
-            window.charts.throughput.update()
-            window.charts.error_rate.update()
             window.charts.response_time.update()
         }
     },
@@ -321,9 +326,9 @@ const SummaryFilter = {
             }
             return this.filtered_tests.reduce((accum, item) => {
                 item.group === 'backend_performance' &&
-                increment_accum(accum, 'aggregation_backend', item.aggregations[this.selected_aggregation_backend])
+                    increment_accum(accum, 'aggregation_backend', item.aggregations[this.selected_aggregation_backend])
                 item.group === 'ui_performance' &&
-                increment_accum(accum, 'aggregation_ui', item.aggregations[this.selected_aggregation_ui])
+                    increment_accum(accum, 'aggregation_ui', item.aggregations[this.selected_aggregation_ui])
                 increment_accum(accum, 'response_time', item.aggregations['mean'])
 
                 Array.from([
@@ -441,161 +446,72 @@ const SummaryFilter = {
 }
 
 register_component('SummaryFilter', SummaryFilter)
+
 $(() => {
+    const get_common_chart_options = () => ({
+        type: 'line',
+        // responsive: true,
+
+        options: {
+            // maintainAspectRatio: false,
+            // aspectRatio: 1,
+            scales: {
+                y: {
+                    type: 'linear',
+                    title: {
+                        display: true,
+                        // text: 'req/sec'
+                    },
+                    grid: {
+                        display: false
+                    },
+                    // suggestedMin: 0
+                },
+                x: {
+                    type: 'time',
+                    grid: {
+                        display: false
+                    },
+                    ticks: {
+                        display: true,
+                        count: 5,
+                        maxTicksLimit: 6
+                    }
+                }
+            },
+            plugins: {
+                legend: {
+                    display: false,
+                },
+                title: {
+                    display: true,
+                    // text: 'AVG. THROUGHPUT',
+                    align: 'start',
+                    fullSize: false
+                },
+            },
+        },
+    })
     window.charts = {}
-    window.charts.throughput = new Chart('throughput_chart', {
-        type: 'line',
-        // responsive: true,
 
-        options: {
-            // maintainAspectRatio: false,
-            aspectRatio: 1,
-            scales: {
-                y: {
-                    type: 'linear',
-                    title: {
-                        display: true,
-                        text: 'ms'
-                    },
-                    grid: {
-                        display: false
-                    },
-                },
-                x: {
-                    grid: {
-                        display: false
-                    },
-                    ticks: {
-                        display: false
-                    }
-                }
-            },
-            plugins: {
-                legend: {
-                    display: false,
-                },
-                title: {
-                    display: true,
-                    text: 'AVG. THROUGHPUT',
-                    align: 'start',
-                    fullSize: false
-                },
-            },
-        },
-    })
-    window.charts.error_rate = new Chart('error_rate_chart', {
-        type: 'line',
-        // responsive: true,
+    let chart_options = get_common_chart_options()
+    chart_options.options.scales.y.title.text = 'req/sec'
+    chart_options.options.plugins.title.text = 'AVG. THROUGHPUT'
+    window.charts.throughput = new Chart('throughput_chart', chart_options)
 
-        options: {
-            // maintainAspectRatio: false,
-            aspectRatio: 1,
-            scales: {
-                y: {
-                    type: 'linear',
-                    title: {
-                        display: true,
-                        text: '%'
-                    },
-                    grid: {
-                        display: false
-                    },
-                },
-                x: {
-                    grid: {
-                        display: false
-                    },
-                    ticks: {
-                        display: false
-                    }
-                }
-            },
-            plugins: {
-                legend: {
-                    display: false,
-                },
-                title: {
-                    display: true,
-                    text: 'ERROR RATE',
-                    align: 'start',
-                    fullSize: false
-                },
-            },
-        },
-    })
-    window.charts.response_time = new Chart('response_time_chart', {
-        type: 'line',
-        options: {
-            aspectRatio: 1,
-            scales: {
-                y: {
-                    type: 'linear',
-                    title: {
-                        display: true,
-                        text: 'ms'
-                    },
-                    grid: {
-                        display: false
-                    },
-                },
-                x: {
-                    grid: {
-                        display: false
-                    },
-                    ticks: {
-                        display: false
-                    }
-                }
-            },
-            plugins: {
-                legend: {
-                    display: false,
-                },
-                title: {
-                    display: true,
-                    text: 'RESPONSE TIME',
-                    align: 'start',
-                    fullSize: false
-                },
-            },
-        },
-    })
-    window.charts.page_speed = new Chart('page_speed_chart', {
-        type: 'line',
-        options: {
-            aspectRatio: 1,
-            scales: {
-                y: {
-                    type: 'linear',
-                    title: {
-                        display: true,
-                        text: 'ms'
-                    },
-                    grid: {
-                        display: false
-                    },
-                },
-                x: {
-                    grid: {
-                        display: false
-                    },
-                    ticks: {
-                        display: false
-                    }
-                }
-            },
-            plugins: {
-                legend: {
-                    display: false,
-                },
-                title: {
-                    display: true,
-                    text: 'PAGE SPEED',
-                    align: 'start',
-                    fullSize: false
-                },
-            },
-        },
-    })
+    chart_options = get_common_chart_options()
+    chart_options.options.scales.y.title.text = '%'
+    chart_options.options.plugins.title.text = 'ERROR RATE'
+    window.charts.error_rate = new Chart('error_rate_chart', chart_options)
+
+    chart_options = get_common_chart_options()
+    chart_options.options.scales.y.title.text = 'ms'
+    chart_options.options.plugins.title.text = 'RESPONSE TIME'
+    window.charts.response_time = new Chart('response_time_chart', chart_options)
+
+    chart_options = get_common_chart_options()
+    chart_options.options.scales.y.title.text = 'ms'
+    chart_options.options.plugins.title.text = 'PAGE SPEED'
+    window.charts.page_speed = new Chart('page_speed_chart', chart_options)
 })
 
