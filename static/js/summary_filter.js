@@ -103,6 +103,12 @@ const SummaryFilter = {
             aggregation_ui_name_map: {},
             start_time: 'last_month',
             end_time: undefined,
+            constants: {
+                ui_name: 'ui_performance',
+                backend_name: 'backend_performance',
+                test_name_delimiter: '::',
+            },
+            chart_aggregation: 'mean'
         }
     },
     async mounted() {
@@ -127,11 +133,11 @@ const SummaryFilter = {
             }
             this.tests = Array.from(this.all_data.reduce((accum, item) => {
                 (newValue.includes('all') || newValue.includes(item.group)) &&
-                accum.add(`${item.group.slice(0, 2)}::${item.name}`)
+                accum.add(`${item.group.slice(0, 2)}${this.constants.test_name_delimiter}${item.name}`)
                 return accum
             }, new Set()))
 
-            // this.$nextTick(this.refresh_pickers)
+            this.handle_filter_changed()
         },
         tests(newValue) {
             // change selected test dropdown
@@ -160,6 +166,7 @@ const SummaryFilter = {
             })
             this.test_types = Array.from(test_types)
             this.test_envs = Array.from(test_envs)
+            this.handle_filter_changed()
         },
         test_types(newValue) {
             // change test_types dropdown
@@ -180,6 +187,7 @@ const SummaryFilter = {
                 newValue.splice(newValue.indexOf('all'), 1)
             }
             this.$nextTick(this.refresh_pickers)
+            this.handle_filter_changed()
         },
         selected_test_envs(newValue, oldValue) {
             // handle select all
@@ -190,9 +198,13 @@ const SummaryFilter = {
                 newValue.splice(newValue.indexOf('all'), 1)
             }
             this.$nextTick(this.refresh_pickers)
+            this.handle_filter_changed()
         },
         async start_time(newValue) {
             await this.fetch_data()
+        },
+        selected_aggregation_backend() {
+            this.handle_filter_changed()
         },
     },
     methods: {
@@ -215,9 +227,7 @@ const SummaryFilter = {
         },
         handle_apply_click() {
             vueVm.registered_components.table_reports?.table_action('load', this.filtered_tests)
-
             this.handle_update_charts()
-
         },
         handle_update_charts() {
             const get_gradient = chart_obj => {
@@ -231,19 +241,56 @@ const SummaryFilter = {
                 gradient.addColorStop(1, 'purple')
                 return gradient
             }
+            const get_gradient_max = chart_obj => {
+                const gradient = chart_obj.ctx.createLinearGradient(0, 20, 0, 120)
+                gradient.addColorStop(0, 'red')
+                gradient.addColorStop(0.8, 'orange')
+                gradient.addColorStop(1, 'yellow')
+                return gradient
+            }
+            const get_gradient_min = chart_obj => {
+                const gradient = chart_obj.ctx.createLinearGradient(0, 0, 0, 20)
+                gradient.addColorStop(0, 'blue')
+                gradient.addColorStop(0.3, 'cyan')
+                gradient.addColorStop(1, 'green')
+                return gradient
+            }
+            const get_gradient_aggr = chart_obj => {
+                const gradient = chart_obj.ctx.createLinearGradient(0, 0, 0, 120)
+                gradient.addColorStop(0, 'red')
+                gradient.addColorStop(0.2, 'orange')
+                gradient.addColorStop(0.4, 'yellow')
+                gradient.addColorStop(0.6, 'blue')
+                gradient.addColorStop(0.8, 'cyan')
+                gradient.addColorStop(1, 'green')
+                return gradient
+            }
+
+            const backend_labels = []
+            const backend_dataset_min = []
+            const backend_dataset_max = []
+            this.filtered_tests.filter(
+                i => i.group === this.constants.backend_name
+            ).map(i => {
+                backend_labels.push(i.start_time)
+                backend_dataset_min.push(i.aggregations.min)
+                backend_dataset_max.push(i.aggregations.max)
+            })
 
             // todo: filter only tests with throughput (only backend)
             let gradientStroke = get_gradient(window.charts.throughput)
             window.charts.throughput.data = {
-                datasets: [{
-                    borderColor: gradientStroke,
-                    pointBorderColor: gradientStroke,
-                    pointBackgroundColor: gradientStroke,
-                    pointHoverBackgroundColor: gradientStroke,
-                    pointHoverBorderColor: gradientStroke,
-                    data: this.filtered_tests.map(i => i.throughput)
-                }],
-                labels: this.filtered_tests.map(i => i.start_time),
+                datasets: [
+                    {
+                        borderColor: gradientStroke,
+                        pointBorderColor: gradientStroke,
+                        pointBackgroundColor: gradientStroke,
+                        pointHoverBackgroundColor: gradientStroke,
+                        pointHoverBorderColor: gradientStroke,
+                        data: this.filtered_tests.map(i => i.throughput)
+                    },
+                ],
+                labels: backend_labels,
             }
             window.charts.throughput.update()
 
@@ -257,37 +304,65 @@ const SummaryFilter = {
                     pointHoverBorderColor: gradientStroke,
                     data: this.filtered_tests.map(i => i.error_rate)
                 }],
-                labels: this.filtered_tests.map(i => i.start_time),
+                labels: backend_labels,
 
             }
             window.charts.error_rate.update()
 
-            gradientStroke = get_gradient(window.charts.response_time)
+            // gradientStroke = get_gradient(window.charts.response_time)
+            const gradient_max = get_gradient_max(window.charts.response_time)
+            const gradient_min = get_gradient_min(window.charts.response_time)
+            const gradient_aggr = get_gradient_aggr(window.charts.response_time)
+            window.charts.response_time.options.plugins.title.text = `RESPONSE TIME : ${this.selected_aggregation_backend}`
             window.charts.response_time.data = {
-                datasets: [{
-                    borderColor: gradientStroke,
-                    pointBorderColor: gradientStroke,
-                    pointBackgroundColor: gradientStroke,
-                    pointHoverBackgroundColor: gradientStroke,
-                    pointHoverBorderColor: gradientStroke,
-                    data: this.filtered_tests.map(i => i.aggregations.mean)
-                }],
-                labels: this.filtered_tests.map(i => i.start_time),
+                datasets: [
+                    {
+                        borderColor: gradient_max,
+                        pointBorderColor: gradient_max,
+                        pointBackgroundColor: gradient_max,
+                        pointHoverBackgroundColor: gradient_max,
+                        pointHoverBorderColor: gradient_max,
+                        borderDash: [5, 5],
+                        borderWidth: 1,
+                        data: backend_dataset_max
+                    },
+                    {
+                        borderColor: '#5933c6',
+                        pointBorderColor: '#5933c6',
+                        pointBackgroundColor: '#5933c6',
+                        pointHoverBackgroundColor: '#5933c6',
+                        pointHoverBorderColor: '#5933c6',
+                        fill: true,
+                        data: this.filtered_tests.map(i => i.aggregations[this.selected_aggregation_backend])
+                    },
+                    {
+                        borderColor: gradient_min,
+                        pointBorderColor: gradient_min,
+                        pointBackgroundColor: gradient_min,
+                        pointHoverBackgroundColor: gradient_min,
+                        pointHoverBorderColor: gradient_min,
+                        borderDash: [5, 5],
+                        borderWidth: 1,
+                        data: backend_dataset_min,
+                    },
+                ],
+                labels: backend_labels,
             }
             window.charts.response_time.update()
-        }
+        },
+        handle_filter_changed() {
+            this.handle_apply_click()
+        },
     },
     computed: {
         backend_test_selected() {
-            return this.selected_groups.includes('all') || this.selected_groups.includes('backend_performance')
-            // todo: backend_performance may not be the name for backend tests
+            return this.selected_groups.includes('all') || this.selected_groups.includes(this.constants.backend_name)
         },
         ui_test_selected() {
-            return this.selected_groups.includes('all') || this.selected_groups.includes('ui_performance')
-            // todo: ui_performance may not be the name for ui tests
+            return this.selected_groups.includes('all') || this.selected_groups.includes(this.constants.ui_name)
         },
         selected_tests_names() {
-            return this.selected_tests.map(i => i === 'all' ? 'all' : i.split('::')[1])
+            return this.selected_tests.map(i => i === 'all' ? 'all' : i.split(this.constants.test_name_delimiter)[1])
         },
         filtered_tests() {
             return this.all_data.filter(i => {
@@ -325,10 +400,10 @@ const SummaryFilter = {
                 }
             }
             return this.filtered_tests.reduce((accum, item) => {
-                item.group === 'backend_performance' &&
-                    increment_accum(accum, 'aggregation_backend', item.aggregations[this.selected_aggregation_backend])
-                item.group === 'ui_performance' &&
-                    increment_accum(accum, 'aggregation_ui', item.aggregations[this.selected_aggregation_ui])
+                item.group === this.constants.backend_name &&
+                increment_accum(accum, 'aggregation_backend', item.aggregations[this.selected_aggregation_backend])
+                item.group === this.constants.ui_name &&
+                increment_accum(accum, 'aggregation_ui', item.aggregations[this.selected_aggregation_ui])
                 increment_accum(accum, 'response_time', item.aggregations['mean'])
 
                 Array.from([
@@ -344,11 +419,11 @@ const SummaryFilter = {
     },
     template: `
 <div>
-<div class="d-flex">
-        <div class="d-flex flex-grow-1">
-        is_loading: [[ is_loading ]]
-        </div>
-</div>
+    <div class="d-flex">
+            <div class="d-flex flex-grow-1">
+            is_loading: [[ is_loading ]]
+            </div>
+    </div>
     <div class="d-flex">
         <div class="d-flex justify-content-between flex-grow-1">
 
@@ -441,6 +516,22 @@ const SummaryFilter = {
         :backend_metric_name="aggregation_backend_name_map[selected_aggregation_backend] || selected_aggregation_backend"
         :ui_metric_name="aggregation_ui_name_map[selected_aggregation_ui] || selected_aggregation_ui"
     ></ColorfulCards>
+    
+    <div class="selectpicker-titled mt-3 d-inline-flex">
+        <span class="font-h6 font-semibold px-3 item__left text-uppercase">chart aggregation</span>
+        <select class="selectpicker flex-grow-1" data-style="item__right"
+            v-model="chart_aggregation"
+        >
+            <option value="min">min</option>
+            <option value="max">max</option>
+            <option value="mean">mean</option>
+            <option value="pct50">50 pct</option>
+            <option value="pct75">75 pct</option>
+            <option value="pct90">90 pct</option>
+            <option value="pct95">95 pct</option>
+            <option value="pct99">99 pct</option>
+        </select>
+    </div>
 </div>
     `
 }
@@ -451,7 +542,6 @@ $(() => {
     const get_common_chart_options = () => ({
         type: 'line',
         // responsive: true,
-
         options: {
             // maintainAspectRatio: false,
             // aspectRatio: 1,
@@ -507,6 +597,10 @@ $(() => {
     chart_options = get_common_chart_options()
     chart_options.options.scales.y.title.text = 'ms'
     chart_options.options.plugins.title.text = 'RESPONSE TIME'
+    chart_options.options.interaction = {
+        mode: 'index',
+        intersect: false
+    }
     window.charts.response_time = new Chart('response_time_chart', chart_options)
 
     chart_options = get_common_chart_options()
