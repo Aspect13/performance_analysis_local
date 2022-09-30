@@ -230,17 +230,6 @@ const SummaryFilter = {
             this.handle_update_charts()
         },
         handle_update_charts() {
-            const get_gradient = chart_obj => {
-                const gradient = chart_obj.ctx.createLinearGradient(0, 0, 350, 100)
-                gradient.addColorStop(0, 'red')
-                gradient.addColorStop(0.2, 'orange')
-                gradient.addColorStop(0.3, 'yellow')
-                gradient.addColorStop(0.5, 'green')
-                gradient.addColorStop(0.7, 'cyan')
-                gradient.addColorStop(0.8, 'blue')
-                gradient.addColorStop(1, 'purple')
-                return gradient
-            }
             const get_gradient_max = chart_obj => {
                 const gradient = chart_obj.ctx.createLinearGradient(0, 20, 0, 120)
                 gradient.addColorStop(0, 'red')
@@ -252,16 +241,6 @@ const SummaryFilter = {
                 const gradient = chart_obj.ctx.createLinearGradient(0, 0, 0, 20)
                 gradient.addColorStop(0, 'blue')
                 gradient.addColorStop(0.3, 'cyan')
-                gradient.addColorStop(1, 'green')
-                return gradient
-            }
-            const get_gradient_aggr = chart_obj => {
-                const gradient = chart_obj.ctx.createLinearGradient(0, 0, 0, 120)
-                gradient.addColorStop(0, 'red')
-                gradient.addColorStop(0.2, 'orange')
-                gradient.addColorStop(0.4, 'yellow')
-                gradient.addColorStop(0.6, 'blue')
-                gradient.addColorStop(0.8, 'cyan')
                 gradient.addColorStop(1, 'green')
                 return gradient
             }
@@ -278,15 +257,14 @@ const SummaryFilter = {
             })
 
             // todo: filter only tests with throughput (only backend)
-            let gradientStroke = get_gradient(window.charts.throughput)
             window.charts.throughput.data = {
                 datasets: [
                     {
-                        borderColor: gradientStroke,
-                        pointBorderColor: gradientStroke,
-                        pointBackgroundColor: gradientStroke,
-                        pointHoverBackgroundColor: gradientStroke,
-                        pointHoverBorderColor: gradientStroke,
+                        borderColor: '#5933c6',
+                        pointBorderColor: '#5933c6',
+                        pointBackgroundColor: '#5933c6',
+                        pointHoverBackgroundColor: '#5933c6',
+                        pointHoverBorderColor: '#5933c6',
                         data: this.filtered_tests.map(i => i.throughput)
                     },
                 ],
@@ -294,14 +272,13 @@ const SummaryFilter = {
             }
             window.charts.throughput.update()
 
-            gradientStroke = get_gradient(window.charts.error_rate)
             window.charts.error_rate.data = {
                 datasets: [{
-                    borderColor: gradientStroke,
-                    pointBorderColor: gradientStroke,
-                    pointBackgroundColor: gradientStroke,
-                    pointHoverBackgroundColor: gradientStroke,
-                    pointHoverBorderColor: gradientStroke,
+                    borderColor: '#5933c6',
+                    pointBorderColor: '#5933c6',
+                    pointBackgroundColor: '#5933c6',
+                    pointHoverBackgroundColor: '#5933c6',
+                    pointHoverBorderColor: '#5933c6',
                     data: this.filtered_tests.map(i => i.error_rate)
                 }],
                 labels: backend_labels,
@@ -312,7 +289,6 @@ const SummaryFilter = {
             // gradientStroke = get_gradient(window.charts.response_time)
             const gradient_max = get_gradient_max(window.charts.response_time)
             const gradient_min = get_gradient_min(window.charts.response_time)
-            const gradient_aggr = get_gradient_aggr(window.charts.response_time)
             window.charts.response_time.options.plugins.title.text = `RESPONSE TIME : ${this.selected_aggregation_backend}`
             window.charts.response_time.data = {
                 datasets: [
@@ -324,6 +300,8 @@ const SummaryFilter = {
                         pointHoverBorderColor: gradient_max,
                         borderDash: [5, 5],
                         borderWidth: 1,
+                        fill: '+1',
+                        backgroundColor: '#ff800020',
                         data: backend_dataset_max
                     },
                     {
@@ -332,7 +310,7 @@ const SummaryFilter = {
                         pointBackgroundColor: '#5933c6',
                         pointHoverBackgroundColor: '#5933c6',
                         pointHoverBorderColor: '#5933c6',
-                        fill: true,
+                        fill: false,
                         data: this.filtered_tests.map(i => i.aggregations[this.selected_aggregation_backend])
                     },
                     {
@@ -343,6 +321,8 @@ const SummaryFilter = {
                         pointHoverBorderColor: gradient_min,
                         borderDash: [5, 5],
                         borderWidth: 1,
+                        backgroundColor: '#00800020',
+                        fill: '-1',
                         data: backend_dataset_min,
                     },
                 ],
