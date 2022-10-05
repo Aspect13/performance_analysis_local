@@ -5,6 +5,10 @@
     margin-left: 0.5rem;
 }
 
+.selectpicker-titled > span {
+    white-space: nowrap;
+}
+
 .colorful-cards .col:first-child {
     padding-left: 0;
 }
