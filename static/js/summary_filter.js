@@ -284,6 +284,7 @@ const SummaryFilter = {
                 borderWidth: 1,
                 fill: '+1',
                 backgroundColor: '#ff800020',
+                // backgroundColor: gradient,
             })
             const dataset_min = gradient => ({
                 borderColor: gradient,
@@ -295,71 +296,72 @@ const SummaryFilter = {
                 borderWidth: 1,
                 fill: '-1',
                 backgroundColor: '#00800020',
+                // backgroundColor: gradient,
             })
-            const dataset_main = () => ({
-                borderColor: '#5933c6',
-                pointBorderColor: '#5933c6',
-                pointBackgroundColor: '#5933c6',
-                pointHoverBackgroundColor: '#5933c6',
-                pointHoverBorderColor: '#5933c6',
+            const dataset_main = (color='#5933c6') => ({
+                borderColor: color,
+                pointBorderColor: color,
+                pointBackgroundColor: color,
+                pointHoverBackgroundColor: color,
+                pointHoverBorderColor: color,
                 fill: false,
             })
+            const draw_min_max_lines = this.filtered_backend_tests.length > this.max_test_on_chart
 
-
+            const throughput_datasets = []
+            draw_min_max_lines && throughput_datasets.push({
+                ...dataset_max(get_gradient_max(window.charts.throughput)),
+                data: this.aggregated_data_backend.throughput.max
+            })
+            throughput_datasets.push({
+                ...dataset_main(),
+                data: this.aggregated_data_backend.throughput.main
+            })
+            draw_min_max_lines && throughput_datasets.push({
+                ...dataset_min(get_gradient_min(window.charts.throughput)),
+                data: this.aggregated_data_backend.throughput.min
+            })
             window.charts.throughput.data = {
-                datasets: [
-                    {
-                        ...dataset_max(get_gradient_max(window.charts.throughput)),
-                        data: this.aggregated_data_backend.throughput.max
-                    },
-                    {
-                        ...dataset_main(),
-                        data: this.aggregated_data_backend.throughput.main
-                    },
-                    {
-                        ...dataset_min(get_gradient_min(window.charts.throughput)),
-                        data: this.aggregated_data_backend.throughput.min
-                    },
-                ],
+                datasets: throughput_datasets,
                 labels: this.aggregated_data_backend.labels,
             }
             window.charts.throughput.update()
 
+            const error_rate_datasets = []
+            draw_min_max_lines && error_rate_datasets.push({
+                ...dataset_max(get_gradient_max(window.charts.error_rate)),
+                data: this.aggregated_data_backend.error_rate.max
+            })
+            error_rate_datasets.push({
+                ...dataset_main(),
+                data: this.aggregated_data_backend.error_rate.main
+            })
+            draw_min_max_lines && error_rate_datasets.push({
+                ...dataset_min(get_gradient_min(window.charts.error_rate)),
+                data: this.aggregated_data_backend.error_rate.min
+            })
             window.charts.error_rate.data = {
-                datasets: [
-                    {
-                        ...dataset_max(get_gradient_max(window.charts.error_rate)),
-                        data: this.aggregated_data_backend.error_rate.max
-                    },
-                    {
-                        ...dataset_main(),
-                        data: this.aggregated_data_backend.error_rate.main
-                    },
-                    {
-                        ...dataset_min(get_gradient_min(window.charts.error_rate)),
-                        data: this.aggregated_data_backend.error_rate.min
-                    },
-                ],
+                datasets: error_rate_datasets,
                 labels: this.aggregated_data_backend.labels,
             }
             window.charts.error_rate.update()
 
+            const response_time_datasets = []
+            draw_min_max_lines && response_time_datasets.push({
+                ...dataset_max(get_gradient_max(window.charts.response_time)),
+                data: this.aggregated_data_backend.aggregation.max
+            })
+            response_time_datasets.push({
+                ...dataset_main(),
+                data: this.aggregated_data_backend.aggregation.main
+            })
+            draw_min_max_lines && response_time_datasets.push({
+                ...dataset_min(get_gradient_min(window.charts.response_time)),
+                data: this.aggregated_data_backend.aggregation.min
+            })
             window.charts.response_time.options.plugins.title.text = `RESPONSE TIME : ${this.selected_aggregation_backend}`
             window.charts.response_time.data = {
-                datasets: [
-                    {
-                        ...dataset_max(get_gradient_max(window.charts.error_rate)),
-                        data: this.aggregated_data_backend.error_rate.max
-                    },
-                    {
-                        ...dataset_main(),
-                        data: this.aggregated_data_backend.error_rate.main
-                    },
-                    {
-                        ...dataset_min(get_gradient_min(window.charts.error_rate)),
-                        data: this.aggregated_data_backend.error_rate.min
-                    },
-                ],
+                datasets: response_time_datasets,
                 labels: this.aggregated_data_backend.labels,
             }
             window.charts.response_time.update()
@@ -522,6 +524,7 @@ const SummaryFilter = {
                 groups.push({
                     // data: data_slice,
                     name: `group_${pointers[0]}`,
+                    aggregated_tests: group_size,
                     start_time: data_slice[data_slice.length - 1].start_time, // take start time from last entry of slice
                     ...struct
                 })
@@ -534,6 +537,7 @@ const SummaryFilter = {
             const aggregation_callback = this.aggregation_callback_map[this.chart_aggregation] || this.aggregation_callback_map.mean
             const struct = {
                 labels: [],
+                aggregated_tests: [],
                 throughput: {
                     min: [],
                     max: [],
@@ -557,6 +561,7 @@ const SummaryFilter = {
                     '" data for ', group
                 )
                 struct.labels.push(group.start_time)
+                struct.aggregated_tests.push(group.aggregated_tests)
                 struct.throughput.min.push(this.aggregation_callback_map.min(group.throughput))
                 struct.throughput.max.push(this.aggregation_callback_map.max(group.throughput))
                 struct.error_rate.min.push(this.aggregation_callback_map.min(group.error_rate))
@@ -565,14 +570,14 @@ const SummaryFilter = {
                 struct.aggregation.max.push(this.aggregation_callback_map.max(aggregation_data))
                 switch (this.chart_aggregation) {
                     case 'min':
-                        struct.throughput.main.push(struct.throughput.min)
-                        struct.error_rate.main.push(struct.error_rate.min)
-                        struct.aggregation.main.push(struct.aggregation.min)
+                        struct.throughput.main = struct.throughput.min
+                        struct.error_rate.main = struct.error_rate.min
+                        struct.aggregation.main = struct.aggregation.min
                         break
                     case 'max':
-                        struct.throughput.main.push(struct.throughput.max)
-                        struct.error_rate.main.push(struct.error_rate.max)
-                        struct.aggregation.main.push(struct.aggregation.max)
+                        struct.throughput.main = struct.throughput.max
+                        struct.error_rate.main = struct.error_rate.max
+                        struct.aggregation.main = struct.aggregation.max
                         break
                     default:
                         struct.throughput.main.push(aggregation_callback(group.throughput))
@@ -593,6 +598,7 @@ const SummaryFilter = {
             is_loading: [[ is_loading ]] || 
             selected_filters: [[ selected_filters ]]
             </div>
+            <input type="number" v-model="max_test_on_chart" @change="handle_update_charts">
     </div>
     <div class="d-flex">
         <div class="d-flex justify-content-between flex-grow-1">
