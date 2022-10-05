@@ -1,8 +1,11 @@
-.selectpicker-titled:not(.selectpicker-titled) {
-    margin-right: 0.5rem;
+.filter-container > * {
+    margin: 5px;
 }
-.selectpicker-titled:not(.selectpicker-titled:first-child) {
-    margin-left: 0.5rem;
+
+.selectpicker-titled {
+    flex-grow: 1;
+    max-width: 260px;
+    min-width: 200px;
 }
 
 .selectpicker-titled > span {
@@ -12,6 +15,7 @@
 .colorful-cards .col:first-child {
     padding-left: 0;
 }
+
 .colorful-cards .col:last-child {
     padding-right: 0;
 }
@@ -24,7 +28,7 @@
     flex-grow: 1;
 }
 
-.chart-container > canvas{
+.chart-container > canvas {
     width: 100%;
     height: 100%;
 }

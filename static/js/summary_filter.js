@@ -77,6 +77,21 @@ const ColorfulCards = {
     `
 }
 
+
+const quantile = (arr, percent) => {
+    const q = percent > 1 ? percent / 100 : percent
+    const asc = arr => arr.sort((a, b) => a - b)
+    const sorted = asc(arr)
+    const pos = (sorted.length - 1) * q
+    const base = Math.floor(pos)
+    const rest = pos - base
+    if (sorted[base + 1] !== undefined) {
+        return sorted[base] + rest * (sorted[base + 1] - sorted[base])
+    } else {
+        return sorted[base]
+    }
+}
+
 const SummaryFilter = {
     delimiters: ['[[', ']]'],
     components: {
@@ -108,11 +123,16 @@ const SummaryFilter = {
             },
             chart_aggregation: 'mean',
             selected_filters: [],
-            max_test_on_chart: 3,
+            max_test_on_chart: 6,
             aggregation_callback_map: {
                 min: arr => arr && Math.min(...arr),
                 max: arr => arr && Math.max(...arr),
                 mean: arr => arr && arr.reduce((a, i) => a + i, 0) / arr.length,
+                pct50: arr => arr && quantile(arr, 50),
+                pct75: arr => arr && quantile(arr, 75),
+                pct90: arr => arr && quantile(arr, 90),
+                pct95: arr => arr && quantile(arr, 95),
+                pct99: arr => arr && quantile(arr, 99),
             }
         }
     },
@@ -209,13 +229,13 @@ const SummaryFilter = {
             await this.fetch_data()
         },
         selected_aggregation_backend() {
-            this.handle_filter_changed()
+            this.handle_update_backend_charts()
         },
         selected_aggregation_ui() {
-            this.handle_filter_changed()
+            this.handle_update_ui_charts()
         },
         selected_metric_ui() {
-            this.handle_filter_changed()
+            this.handle_update_ui_charts()
         },
         chart_aggregation() {
             this.handle_update_charts()
@@ -275,6 +295,7 @@ const SummaryFilter = {
                 return gradient
             }
             const dataset_max = gradient => ({
+                label: 'max',
                 borderColor: gradient,
                 pointBorderColor: gradient,
                 pointBackgroundColor: gradient,
@@ -287,6 +308,7 @@ const SummaryFilter = {
                 // backgroundColor: gradient,
             })
             const dataset_min = gradient => ({
+                label: 'min',
                 borderColor: gradient,
                 pointBorderColor: gradient,
                 pointBackgroundColor: gradient,
@@ -298,7 +320,8 @@ const SummaryFilter = {
                 backgroundColor: '#00800020',
                 // backgroundColor: gradient,
             })
-            const dataset_main = (color='#5933c6') => ({
+            const dataset_main = (color = '#5933c6') => ({
+                label: this.selected_aggregation_backend,
                 borderColor: color,
                 pointBorderColor: color,
                 pointBackgroundColor: color,
@@ -306,18 +329,30 @@ const SummaryFilter = {
                 pointHoverBorderColor: color,
                 fill: false,
             })
-            const draw_min_max_lines = this.filtered_backend_tests.length > this.max_test_on_chart
+            const tooltip_options = {
+                callbacks: {
+                    footer: tooltip_items => {
+                        const tests_num = this.aggregated_data_backend.aggregated_tests[tooltip_items[0].dataIndex]
+                        return `${tests_num} tests aggregated`
+                    },
+                    title: tooltip_items => {
+                        return this.aggregated_data_backend.names[tooltip_items[0].dataIndex]
+                    },
+                }
+            }
+
 
             const throughput_datasets = []
-            draw_min_max_lines && throughput_datasets.push({
+            this.backend_tests_need_grouping && throughput_datasets.push({
                 ...dataset_max(get_gradient_max(window.charts.throughput)),
                 data: this.aggregated_data_backend.throughput.max
             })
             throughput_datasets.push({
                 ...dataset_main(),
-                data: this.aggregated_data_backend.throughput.main
+                data: this.aggregated_data_backend.throughput.main,
+                custom_value: [1, 2, 3, 4, 5]
             })
-            draw_min_max_lines && throughput_datasets.push({
+            this.backend_tests_need_grouping && throughput_datasets.push({
                 ...dataset_min(get_gradient_min(window.charts.throughput)),
                 data: this.aggregated_data_backend.throughput.min
             })
@@ -325,10 +360,11 @@ const SummaryFilter = {
                 datasets: throughput_datasets,
                 labels: this.aggregated_data_backend.labels,
             }
+            window.charts.throughput.options.plugins.tooltip = tooltip_options
             window.charts.throughput.update()
 
             const error_rate_datasets = []
-            draw_min_max_lines && error_rate_datasets.push({
+            this.backend_tests_need_grouping && error_rate_datasets.push({
                 ...dataset_max(get_gradient_max(window.charts.error_rate)),
                 data: this.aggregated_data_backend.error_rate.max
             })
@@ -336,7 +372,7 @@ const SummaryFilter = {
                 ...dataset_main(),
                 data: this.aggregated_data_backend.error_rate.main
             })
-            draw_min_max_lines && error_rate_datasets.push({
+            this.backend_tests_need_grouping && error_rate_datasets.push({
                 ...dataset_min(get_gradient_min(window.charts.error_rate)),
                 data: this.aggregated_data_backend.error_rate.min
             })
@@ -344,10 +380,11 @@ const SummaryFilter = {
                 datasets: error_rate_datasets,
                 labels: this.aggregated_data_backend.labels,
             }
+            window.charts.error_rate.options.plugins.tooltip = tooltip_options
             window.charts.error_rate.update()
 
             const response_time_datasets = []
-            draw_min_max_lines && response_time_datasets.push({
+            this.backend_tests_need_grouping && response_time_datasets.push({
                 ...dataset_max(get_gradient_max(window.charts.response_time)),
                 data: this.aggregated_data_backend.aggregation.max
             })
@@ -355,19 +392,33 @@ const SummaryFilter = {
                 ...dataset_main(),
                 data: this.aggregated_data_backend.aggregation.main
             })
-            draw_min_max_lines && response_time_datasets.push({
+            this.backend_tests_need_grouping && response_time_datasets.push({
                 ...dataset_min(get_gradient_min(window.charts.response_time)),
                 data: this.aggregated_data_backend.aggregation.min
             })
-            window.charts.response_time.options.plugins.title.text = `RESPONSE TIME : ${this.selected_aggregation_backend}`
+            // window.charts.response_time.options.plugins.title.text = `RESPONSE TIME : ${this.selected_aggregation_backend}`
+            window.charts.response_time.options.plugins.subtitle = {
+                display: true,
+                text: this.selected_aggregation_backend,
+                align: 'center',
+            }
             window.charts.response_time.data = {
                 datasets: response_time_datasets,
                 labels: this.aggregated_data_backend.labels,
             }
+            window.charts.response_time.options.plugins.tooltip = tooltip_options
             window.charts.response_time.update()
         },
         handle_update_ui_charts() {
-            window.charts.page_speed.options.plugins.title.text = `PAGE SPEED : ${this.selected_metric_ui_mapped} : ${this.selected_aggregation_ui_mapped}`
+            // window.charts.page_speed.options.plugins.title.text = `PAGE SPEED : ${this.selected_metric_ui_mapped} : ${this.selected_aggregation_ui_mapped}`
+            window.charts.page_speed.options.plugins.subtitle = {
+                display: true,
+                text: `${this.selected_metric_ui_mapped} : ${this.selected_aggregation_ui_mapped}`,
+                align: 'center',
+                // padding: {
+                //     bottom: 10,
+                // }
+            }
             window.charts.page_speed.data = {
                 datasets: [
                     {
@@ -523,8 +574,10 @@ const SummaryFilter = {
                 })
                 groups.push({
                     // data: data_slice,
-                    name: `group_${pointers[0]}`,
-                    aggregated_tests: group_size,
+                    name: this.backend_tests_need_grouping ?
+                        `group ${pointers[0] + 1}-${pointers[1] + 1}` :
+                        data_slice[0].name,
+                    aggregated_tests: pointers[1] - pointers[0],
                     start_time: data_slice[data_slice.length - 1].start_time, // take start time from last entry of slice
                     ...struct
                 })
@@ -538,6 +591,7 @@ const SummaryFilter = {
             const struct = {
                 labels: [],
                 aggregated_tests: [],
+                names: [],
                 throughput: {
                     min: [],
                     max: [],
@@ -562,6 +616,7 @@ const SummaryFilter = {
                 )
                 struct.labels.push(group.start_time)
                 struct.aggregated_tests.push(group.aggregated_tests)
+                struct.names.push(group.name)
                 struct.throughput.min.push(this.aggregation_callback_map.min(group.throughput))
                 struct.throughput.max.push(this.aggregation_callback_map.max(group.throughput))
                 struct.error_rate.min.push(this.aggregation_callback_map.min(group.error_rate))
@@ -588,22 +643,30 @@ const SummaryFilter = {
             })
             console.log('aggregated', struct)
             return struct
+        },
+        backend_tests_need_grouping() {
+            return this.filtered_backend_tests.length > this.max_test_on_chart
         }
     },
     template: `
 <div>
-    <div class="d-flex">
+    <div class="d-flex" style="background-color: #80808080">
             <div class="d-flex flex-grow-1">
-            DEBUG || 
-            is_loading: [[ is_loading ]] || 
-            selected_filters: [[ selected_filters ]]
+                DEBUG || 
+                is_loading: [[ is_loading ]] || 
+                selected_filters: [[ selected_filters ]]
             </div>
-            <input type="number" v-model="max_test_on_chart" @change="handle_update_charts">
+            <div class="d-flex flex-grow-1">
+                <label>
+                    Max tests on chart
+                    <input type="number" v-model="max_test_on_chart" @change="handle_update_charts" class="form-control">
+                </label>
+            </div>
     </div>
-    <div class="d-flex">
-        <div class="d-flex justify-content-between flex-grow-1">
+    <div class="d-flex flex-wrap filter-container">
+<!--        <div class="d-flex justify-content-between flex-grow-1">-->
 
-            <div class="selectpicker-titled w-100">
+            <div class="selectpicker-titled">
                 <span class="font-h6 font-semibold px-3 item__left text-uppercase">group</span>
                 <select class="selectpicker flex-grow-1" data-style="item__right"
                     multiple
@@ -614,7 +677,7 @@ const SummaryFilter = {
                 </select>
             </div>
 
-            <div class="selectpicker-titled w-100">
+            <div class="selectpicker-titled">
                 <span class="font-h6 font-semibold px-3 item__left text-uppercase">test</span>
                 <select class="selectpicker flex-grow-1" data-style="item__right"
                     multiple
@@ -626,7 +689,7 @@ const SummaryFilter = {
                 </select>
             </div>
 
-            <div class="selectpicker-titled w-100">
+            <div class="selectpicker-titled">
                 <span class="font-h6 font-semibold px-3 item__left text-uppercase">type</span>
                 <select class="selectpicker flex-grow-1" data-style="item__right"
                     multiple
@@ -638,7 +701,7 @@ const SummaryFilter = {
                 </select>
             </div>
 
-            <div class="selectpicker-titled w-100">
+            <div class="selectpicker-titled">
                 <span class="font-h6 font-semibold px-3 item__left text-uppercase">env.</span>
                 <select class="selectpicker flex-grow-1" data-style="item__right"
                     multiple
@@ -650,7 +713,7 @@ const SummaryFilter = {
                 </select>
             </div>
 
-            <div class="selectpicker-titled w-100" 
+            <div class="selectpicker-titled" 
                 v-show="selected_filters.includes('Backend Aggregation')"
             >
                 <span class="font-h6 font-semibold px-3 item__left text-uppercase">aggr. BE</span>
@@ -669,7 +732,7 @@ const SummaryFilter = {
                 </select>
             </div>
             
-            <div class="selectpicker-titled w-100" 
+            <div class="selectpicker-titled" 
                 v-show="selected_filters.includes('UI Metric')"
             >
                 <span class="font-h6 font-semibold px-3 item__left text-uppercase">UI metric</span>
@@ -693,7 +756,7 @@ const SummaryFilter = {
                 </select>
             </div>
             
-            <div class="selectpicker-titled w-100" 
+            <div class="selectpicker-titled" 
                 v-show="selected_filters.includes('UI Aggregation')"
             >
                 <span class="font-h6 font-semibold px-3 item__left text-uppercase">aggr. UI</span>
@@ -712,7 +775,7 @@ const SummaryFilter = {
                 </select>
             </div>
 
-            <div class="selectpicker-titled w-100">
+            <div class="selectpicker-titled">
                 <span class="font-h6 font-semibold px-3 item__left fa fa-calendar"></span>
                 <select class="selectpicker flex-grow-1" data-style="item__right"
                     v-model="start_time"
@@ -721,13 +784,12 @@ const SummaryFilter = {
                     <option value="last_week">Last Week</option>
                 </select>
             </div>
-        </div>
+<!--        </div>-->
 
         <MultiselectDropdown
             variant="slot"
             :list_items='["Backend Aggregation", "UI Metric", "UI Aggregation"]'
             :pre_selected_indexes='[0, 1, 2]'
-            container_class="mx-3"
             button_class="btn-icon btn-secondary"
             @change="selected_filters = $event"
         >
