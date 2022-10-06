@@ -332,8 +332,10 @@ const SummaryFilter = {
             const tooltip_options = {
                 callbacks: {
                     footer: tooltip_items => {
-                        const tests_num = this.aggregated_data_backend.aggregated_tests[tooltip_items[0].dataIndex]
-                        return `${tests_num} tests aggregated`
+                        if (this.backend_tests_need_grouping) {
+                            const tests_num = this.aggregated_data_backend.aggregated_tests[tooltip_items[0].dataIndex]
+                            return `${tests_num} tests aggregated`
+                        }
                     },
                     title: tooltip_items => {
                         return this.aggregated_data_backend.names[tooltip_items[0].dataIndex]
@@ -396,12 +398,12 @@ const SummaryFilter = {
                 ...dataset_min(get_gradient_min(window.charts.response_time)),
                 data: this.aggregated_data_backend.aggregation.min
             })
-            // window.charts.response_time.options.plugins.title.text = `RESPONSE TIME : ${this.selected_aggregation_backend}`
-            window.charts.response_time.options.plugins.subtitle = {
-                display: true,
-                text: this.selected_aggregation_backend,
-                align: 'center',
-            }
+            window.charts.response_time.options.plugins.title.text = `RESPONSE TIME - ${this.selected_aggregation_backend}`
+            // window.charts.response_time.options.plugins.subtitle = {
+            //     display: true,
+            //     text: this.selected_aggregation_backend,
+            //     align: 'center',
+            // }
             window.charts.response_time.data = {
                 datasets: response_time_datasets,
                 labels: this.aggregated_data_backend.labels,
@@ -410,15 +412,12 @@ const SummaryFilter = {
             window.charts.response_time.update()
         },
         handle_update_ui_charts() {
-            // window.charts.page_speed.options.plugins.title.text = `PAGE SPEED : ${this.selected_metric_ui_mapped} : ${this.selected_aggregation_ui_mapped}`
-            window.charts.page_speed.options.plugins.subtitle = {
-                display: true,
-                text: `${this.selected_metric_ui_mapped} : ${this.selected_aggregation_ui_mapped}`,
-                align: 'center',
-                // padding: {
-                //     bottom: 10,
-                // }
-            }
+            window.charts.page_speed.options.plugins.title.text = `PAGE SPEED - ${this.selected_metric_ui_mapped} - ${this.selected_aggregation_ui_mapped}`
+            // window.charts.page_speed.options.plugins.subtitle = {
+            //     display: true,
+            //     text: `${this.selected_metric_ui_mapped} : ${this.selected_aggregation_ui_mapped}`,
+            //     align: 'center',
+            // }
             window.charts.page_speed.data = {
                 datasets: [
                     {
@@ -445,6 +444,20 @@ const SummaryFilter = {
         handle_filter_changed() {
             this.handle_apply_click()
         },
+        handle_expand_chart(event) {
+            const chart_name = event.target.tagName === 'I' ?
+                event.target.parentElement.dataset.chart_name :
+                event.target.dataset.chart_name
+            const chart = window.charts[chart_name]
+            if (chart) {
+                Object.assign(window.charts.expanded_chart.options, chart.config.options)
+                Object.assign(window.charts.expanded_chart.data, chart.config.data)
+                window.charts.expanded_chart.update()
+                $('#expanded_chart_backdrop').modal('show')
+            } else {
+                showNotify('ERROR', `No chart named ${chart_name} found`)
+            }
+        }
     },
     computed: {
         backend_test_selected() {
@@ -575,7 +588,7 @@ const SummaryFilter = {
                 groups.push({
                     // data: data_slice,
                     name: this.backend_tests_need_grouping ?
-                        `group ${pointers[0] + 1}-${pointers[1] + 1}` :
+                        `group ${pointers[0] + 1}-${pointers[1]}` :
                         data_slice[0].name,
                     aggregated_tests: pointers[1] - pointers[0],
                     start_time: data_slice[data_slice.length - 1].start_time, // take start time from last entry of slice
@@ -829,74 +842,5 @@ const SummaryFilter = {
 
 register_component('SummaryFilter', SummaryFilter)
 
-$(() => {
-    const get_common_chart_options = () => ({
-        type: 'line',
-        // responsive: true,
-        options: {
-            // maintainAspectRatio: false,
-            // aspectRatio: 1,
-            interaction: {
-                mode: 'index',
-                intersect: false
-            },
-            scales: {
-                y: {
-                    type: 'linear',
-                    title: {
-                        display: true,
-                        // text: 'req/sec'
-                    },
-                    grid: {
-                        display: false
-                    },
-                    // suggestedMin: 0
-                },
-                x: {
-                    type: 'time',
-                    grid: {
-                        display: false
-                    },
-                    ticks: {
-                        display: true,
-                        count: 5,
-                        maxTicksLimit: 6
-                    }
-                }
-            },
-            plugins: {
-                legend: {
-                    display: false,
-                },
-                title: {
-                    display: true,
-                    // text: 'AVG. THROUGHPUT',
-                    align: 'start',
-                    fullSize: false
-                },
-            },
-        },
-    })
-    window.charts = {}
 
-    let chart_options = get_common_chart_options()
-    chart_options.options.scales.y.title.text = 'req/sec'
-    chart_options.options.plugins.title.text = 'AVG. THROUGHPUT'
-    window.charts.throughput = new Chart('throughput_chart', chart_options)
-
-    chart_options = get_common_chart_options()
-    chart_options.options.scales.y.title.text = '%'
-    chart_options.options.plugins.title.text = 'ERROR RATE'
-    window.charts.error_rate = new Chart('error_rate_chart', chart_options)
-
-    chart_options = get_common_chart_options()
-    chart_options.options.scales.y.title.text = 'ms'
-    chart_options.options.plugins.title.text = 'RESPONSE TIME'
-    window.charts.response_time = new Chart('response_time_chart', chart_options)
-
-    chart_options = get_common_chart_options()
-    chart_options.options.scales.y.title.text = 'ms'
-    chart_options.options.plugins.title.text = 'PAGE SPEED'
-    window.charts.page_speed = new Chart('page_speed_chart', chart_options)
-})
 

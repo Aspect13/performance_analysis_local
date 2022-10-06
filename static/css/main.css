@@ -3,13 +3,18 @@
 }
 
 .selectpicker-titled {
-    flex-grow: 1;
-    max-width: 260px;
-    min-width: 200px;
+    /*flex-grow: 1;*/
+    /*max-width: 260px;*/
+    min-width: 220px;
 }
 
 .selectpicker-titled > span {
     white-space: nowrap;
+}
+
+.selectpicker-titled > div {
+    width: 250px;
+    max-width: 380px;
 }
 
 .colorful-cards .col:first-child {
@@ -21,11 +26,18 @@
 }
 
 .chart-container {
+    position: relative;
     /*border: 1px solid gray;*/
-    max-height: 250px;
+    /*max-height: 250px;*/
+    max-height: 220px;
     /*max-width: 400px;*/
     max-width: 25%;
     flex-grow: 1;
+}
+
+.chart-container > button {
+    position: absolute;
+    right: 0;
 }
 
 .chart-container > canvas {
