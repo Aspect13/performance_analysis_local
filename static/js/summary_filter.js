@@ -1,5 +1,3 @@
-const api_base = '/api/v1'
-
 const ColorfulCards = {
     delimiters: ['[[', ']]'],
     props: ['card_data', 'backend_metric_name', 'ui_metric_name', 'ui_aggregation_name'],
@@ -77,21 +75,6 @@ const ColorfulCards = {
     `
 }
 
-
-const quantile = (arr, percent) => {
-    const q = percent > 1 ? percent / 100 : percent
-    const asc = arr => arr.sort((a, b) => a - b)
-    const sorted = asc(arr)
-    const pos = (sorted.length - 1) * q
-    const base = Math.floor(pos)
-    const rest = pos - base
-    if (sorted[base + 1] !== undefined) {
-        return sorted[base] + rest * (sorted[base + 1] - sorted[base])
-    } else {
-        return sorted[base]
-    }
-}
-
 const SummaryFilter = {
     delimiters: ['[[', ']]'],
     components: {
@@ -124,16 +107,6 @@ const SummaryFilter = {
             chart_aggregation: 'mean',
             selected_filters: [],
             max_test_on_chart: 6,
-            aggregation_callback_map: {
-                min: arr => arr && Math.min(...arr),
-                max: arr => arr && Math.max(...arr),
-                mean: arr => arr && arr.reduce((a, i) => a + i, 0) / arr.length,
-                pct50: arr => arr && quantile(arr, 50),
-                pct75: arr => arr && quantile(arr, 75),
-                pct90: arr => arr && quantile(arr, 90),
-                pct95: arr => arr && quantile(arr, 95),
-                pct99: arr => arr && quantile(arr, 99),
-            }
         }
     },
     async mounted() {
@@ -276,94 +249,47 @@ const SummaryFilter = {
             this.is_loading = false
         },
         handle_apply_click() {
-            vueVm.registered_components.table_reports?.table_action('load', this.filtered_tests)
-            this.handle_update_charts()
+            this.handle_filter_changed()
         },
         handle_update_backend_charts() {
-            const get_gradient_max = chart_obj => {
-                const gradient = chart_obj.ctx.createLinearGradient(0, 20, 0, 120)
-                gradient.addColorStop(0, 'red')
-                gradient.addColorStop(0.8, 'orange')
-                gradient.addColorStop(1, 'yellow')
-                return gradient
-            }
-            const get_gradient_min = chart_obj => {
-                const gradient = chart_obj.ctx.createLinearGradient(0, 0, 0, 20)
-                gradient.addColorStop(0, 'blue')
-                gradient.addColorStop(0.3, 'cyan')
-                gradient.addColorStop(1, 'green')
-                return gradient
-            }
-            const dataset_max = gradient => ({
-                label: 'max',
-                borderColor: gradient,
-                pointBorderColor: gradient,
-                pointBackgroundColor: gradient,
-                pointHoverBackgroundColor: gradient,
-                pointHoverBorderColor: gradient,
-                borderDash: [5, 5],
-                borderWidth: 1,
-                fill: '+1',
-                backgroundColor: '#ff800020',
-                // backgroundColor: gradient,
-            })
-            const dataset_min = gradient => ({
-                label: 'min',
-                borderColor: gradient,
-                pointBorderColor: gradient,
-                pointBackgroundColor: gradient,
-                pointHoverBackgroundColor: gradient,
-                pointHoverBorderColor: gradient,
-                borderDash: [5, 5],
-                borderWidth: 1,
-                fill: '-1',
-                backgroundColor: '#00800020',
-                // backgroundColor: gradient,
-            })
-            const dataset_main = (color = '#5933c6') => ({
-                label: this.selected_aggregation_backend,
-                borderColor: color,
-                pointBorderColor: color,
-                pointBackgroundColor: color,
-                pointHoverBackgroundColor: color,
-                pointHoverBorderColor: color,
-                fill: false,
-            })
-            const tooltip_options = {
-                callbacks: {
-                    footer: tooltip_items => {
-                        if (this.backend_tests_need_grouping) {
-                            const tests_num = this.aggregated_data_backend.aggregated_tests[tooltip_items[0].dataIndex]
-                            return `${tests_num} tests aggregated`
-                        }
-                    },
-                    title: tooltip_items => {
-                        return this.aggregated_data_backend.names[tooltip_items[0].dataIndex]
-                    },
-                }
-            }
 
-
-            const throughput_datasets = []
-            this.backend_tests_need_grouping && throughput_datasets.push({
-                ...dataset_max(get_gradient_max(window.charts.throughput)),
-                data: this.aggregated_data_backend.throughput.max
-            })
-            throughput_datasets.push({
-                ...dataset_main(),
-                data: this.aggregated_data_backend.throughput.main,
-                custom_value: [1, 2, 3, 4, 5]
-            })
-            this.backend_tests_need_grouping && throughput_datasets.push({
-                ...dataset_min(get_gradient_min(window.charts.throughput)),
-                data: this.aggregated_data_backend.throughput.min
-            })
-            window.charts.throughput.data = {
+            const throughput_datasets = prepare_datasets(
+                window.charts.throughput,
+                this.aggregated_data_backend.throughput,
+                this.backend_tests_need_grouping,
+                `metric[${this.selected_aggregation_backend_mapped}]`
+            )
+            // const throughput_datasets = []
+            // this.backend_tests_need_grouping && throughput_datasets.push({
+            //     ...dataset_max(get_gradient_max(window.charts.throughput)),
+            //     data: this.aggregated_data_backend.throughput.max
+            // })
+            // throughput_datasets.push({
+            //     ...dataset_main(),
+            //     data: this.aggregated_data_backend.throughput.main,
+            // })
+            // this.backend_tests_need_grouping && throughput_datasets.push({
+            //     ...dataset_min(get_gradient_min(window.charts.throughput)),
+            //     data: this.aggregated_data_backend.throughput.min
+            // })
+            update_chart(window.charts.throughput, {
                 datasets: throughput_datasets,
-                labels: this.aggregated_data_backend.labels,
-            }
-            window.charts.throughput.options.plugins.tooltip = tooltip_options
-            window.charts.throughput.update()
+                labels: this.aggregated_data_backend.labels
+            }, {
+                tooltip: get_tooltip_options(
+                    this.aggregated_data_backend.aggregated_tests,
+                    this.aggregated_data_backend.names
+                )
+            })
+            // window.charts.throughput.data = {
+            //     datasets: throughput_datasets,
+            //     labels: this.aggregated_data_backend.labels,
+            // }
+            // window.charts.throughput.options.plugins.tooltip = get_tooltip_options(
+            //     this.aggregated_data_backend.aggregated_tests,
+            //     this.aggregated_data_backend.names
+            // )
+            // window.charts.throughput.update()
 
             const error_rate_datasets = []
             this.backend_tests_need_grouping && error_rate_datasets.push({
@@ -371,7 +297,7 @@ const SummaryFilter = {
                 data: this.aggregated_data_backend.error_rate.max
             })
             error_rate_datasets.push({
-                ...dataset_main(),
+                ...dataset_main(`metric[${this.selected_aggregation_backend_mapped}]`),
                 data: this.aggregated_data_backend.error_rate.main
             })
             this.backend_tests_need_grouping && error_rate_datasets.push({
@@ -382,7 +308,10 @@ const SummaryFilter = {
                 datasets: error_rate_datasets,
                 labels: this.aggregated_data_backend.labels,
             }
-            window.charts.error_rate.options.plugins.tooltip = tooltip_options
+            window.charts.error_rate.options.plugins.tooltip = get_tooltip_options(
+                this.aggregated_data_backend.aggregated_tests,
+                this.aggregated_data_backend.names
+            )
             window.charts.error_rate.update()
 
             const response_time_datasets = []
@@ -391,7 +320,7 @@ const SummaryFilter = {
                 data: this.aggregated_data_backend.aggregation.max
             })
             response_time_datasets.push({
-                ...dataset_main(),
+                ...dataset_main(`metric[${this.selected_aggregation_backend_mapped}]`),
                 data: this.aggregated_data_backend.aggregation.main
             })
             this.backend_tests_need_grouping && response_time_datasets.push({
@@ -408,33 +337,44 @@ const SummaryFilter = {
                 datasets: response_time_datasets,
                 labels: this.aggregated_data_backend.labels,
             }
-            window.charts.response_time.options.plugins.tooltip = tooltip_options
+            window.charts.response_time.options.plugins.tooltip = get_tooltip_options(
+                this.aggregated_data_backend.aggregated_tests,
+                this.aggregated_data_backend.names
+            )
             window.charts.response_time.update()
         },
         handle_update_ui_charts() {
+            const datasets = []
+            // this.backend_tests_need_grouping && datasets.push({
+            //     ...dataset_max(get_gradient_max(window.charts.page_speed)),
+            //     data: this.aggregated_data_backend.throughput.max
+            // })
+            datasets.push({
+                ...dataset_main(`metric[${this.selected_aggregation_ui_mapped}]`),
+                data: this.filtered_ui_tests.map(i => {
+                    const metric_data = i[this.selected_metric_ui]
+                    return metric_data && metric_data?.aggregations[this.selected_aggregation_ui]
+                }),
+            })
+            // this.backend_tests_need_grouping && datasets.push({
+            //     ...dataset_min(get_gradient_min(window.charts.page_speed)),
+            //     data: this.aggregated_data_backend.throughput.min
+            // })
+
+            window.charts.page_speed.data = {
+                datasets: datasets,
+                labels: this.filtered_ui_tests.map(i => i.start_time),
+            }
             window.charts.page_speed.options.plugins.title.text = `PAGE SPEED - ${this.selected_metric_ui_mapped} - ${this.selected_aggregation_ui_mapped}`
             // window.charts.page_speed.options.plugins.subtitle = {
             //     display: true,
             //     text: `${this.selected_metric_ui_mapped} : ${this.selected_aggregation_ui_mapped}`,
             //     align: 'center',
             // }
-            window.charts.page_speed.data = {
-                datasets: [
-                    {
-                        borderColor: '#5933c6',
-                        pointBorderColor: '#5933c6',
-                        pointBackgroundColor: '#5933c6',
-                        pointHoverBackgroundColor: '#5933c6',
-                        pointHoverBorderColor: '#5933c6',
-                        fill: false,
-                        data: this.filtered_ui_tests.map(i => {
-                            const metric_data = i[this.selected_metric_ui]
-                            return metric_data && metric_data?.aggregations[this.selected_aggregation_ui]
-                        })
-                    },
-                ],
-                labels: this.filtered_ui_tests.map(i => i.start_time),
-            }
+            // window.charts.page_speed.options.plugins.tooltip = get_tooltip_options(
+            //     this.aggregated_data_backend.aggregated_tests,
+            //     this.aggregated_data_backend.names
+            // )
             window.charts.page_speed.update()
         },
         handle_update_charts() {
@@ -442,7 +382,8 @@ const SummaryFilter = {
             this.handle_update_ui_charts()
         },
         handle_filter_changed() {
-            this.handle_apply_click()
+            vueVm.registered_components.table_reports?.table_action('load', this.filtered_tests)
+            this.handle_update_charts()
         },
         handle_expand_chart(event) {
             const chart_name = event.target.tagName === 'I' ?
@@ -507,11 +448,6 @@ const SummaryFilter = {
                     return {start_time: this.start_time, end_time: this.end_time}
             }
         },
-        // avg_throughput() {
-        //     return this.filtered_tests.reduce(
-        //         (prev, next) => prev.throughput || 0 + next.throughput || 0, 0
-        //     ) / this.filtered_tests.length
-        // },
         colorful_cards_data() {
             const increment_accum = (accum, key, value) => {
                 if (value !== undefined) {
@@ -541,9 +477,6 @@ const SummaryFilter = {
                 sums: {}
             })
         },
-        // show_backend_filter() {
-        //     return this.selected_filters.includes('Backend Aggregation')
-        // },
         selected_aggregation_backend_mapped() {
             return this.aggregation_backend_name_map[this.selected_aggregation_backend]
                 || this.selected_aggregation_backend
@@ -557,105 +490,10 @@ const SummaryFilter = {
                 || this.selected_metric_ui
         },
         grouped_data_backend() {
-            let residual = this.filtered_backend_tests.length % this.max_test_on_chart
-            const group_size = ~~(this.filtered_backend_tests.length / this.max_test_on_chart)
-            let groups = []
-            const pointers = [0, 0]
-            while (pointers[1] < this.filtered_backend_tests.length) {
-                pointers[1] = pointers[1] + group_size
-                if (residual > 0) {
-                    pointers[1]++ // add extra test to each group if residual > 0
-                    residual--
-                }
-                const data_slice = this.filtered_backend_tests.slice(...pointers)
-                const struct = {
-                    error_rate: [],
-                    throughput: [],
-                    aggregations: {},
-                }
-                data_slice.forEach(i => {
-                    struct.error_rate.push(i.error_rate)
-                    struct.throughput.push(i.throughput)
-                    Object.entries(i.aggregations).forEach(([k, v]) => {
-                        if (struct.aggregations[k]) {
-                            struct.aggregations[k].push(v)
-                        } else {
-                            struct.aggregations[k] = [v]
-                        }
-                    })
-
-                })
-                groups.push({
-                    // data: data_slice,
-                    name: this.backend_tests_need_grouping ?
-                        `group ${pointers[0] + 1}-${pointers[1]}` :
-                        data_slice[0].name,
-                    aggregated_tests: pointers[1] - pointers[0],
-                    start_time: data_slice[data_slice.length - 1].start_time, // take start time from last entry of slice
-                    ...struct
-                })
-                pointers[0] = pointers[1]
-            }
-            // console.log('groups', groups)
-            return groups
+            return group_data(this.filtered_backend_tests, this.max_test_on_chart)
         },
         aggregated_data_backend() {
-            const aggregation_callback = this.aggregation_callback_map[this.chart_aggregation] || this.aggregation_callback_map.mean
-            const struct = {
-                labels: [],
-                aggregated_tests: [],
-                names: [],
-                throughput: {
-                    min: [],
-                    max: [],
-                    main: []
-                },
-                error_rate: {
-                    min: [],
-                    max: [],
-                    main: []
-                },
-                aggregation: {
-                    min: [],
-                    max: [],
-                    main: []
-                }
-            }
-            this.grouped_data_backend.forEach(group => {
-                const aggregation_data = group.aggregations[this.selected_aggregation_backend]
-                !aggregation_data && console.warn(
-                    'No aggregation "', this.selected_aggregation_backend,
-                    '" data for ', group
-                )
-                struct.labels.push(group.start_time)
-                struct.aggregated_tests.push(group.aggregated_tests)
-                struct.names.push(group.name)
-                struct.throughput.min.push(this.aggregation_callback_map.min(group.throughput))
-                struct.throughput.max.push(this.aggregation_callback_map.max(group.throughput))
-                struct.error_rate.min.push(this.aggregation_callback_map.min(group.error_rate))
-                struct.error_rate.max.push(this.aggregation_callback_map.max(group.error_rate))
-                struct.aggregation.min.push(this.aggregation_callback_map.min(aggregation_data))
-                struct.aggregation.max.push(this.aggregation_callback_map.max(aggregation_data))
-                switch (this.chart_aggregation) {
-                    case 'min':
-                        struct.throughput.main = struct.throughput.min
-                        struct.error_rate.main = struct.error_rate.min
-                        struct.aggregation.main = struct.aggregation.min
-                        break
-                    case 'max':
-                        struct.throughput.main = struct.throughput.max
-                        struct.error_rate.main = struct.error_rate.max
-                        struct.aggregation.main = struct.aggregation.max
-                        break
-                    default:
-                        struct.throughput.main.push(aggregation_callback(group.throughput))
-                        struct.error_rate.main.push(aggregation_callback(group.error_rate))
-                        struct.aggregation.main.push(aggregation_callback(aggregation_data))
-                        break
-                }
-            })
-            console.log('aggregated', struct)
-            return struct
+            return aggregate_data(this.grouped_data_backend, this.selected_aggregation_backend, this.chart_aggregation)
         },
         backend_tests_need_grouping() {
             return this.filtered_backend_tests.length > this.max_test_on_chart

@@ -162,16 +162,16 @@ class RPC:
             BackendAnalysisModel.parse_obj(dict(zip(columns.keys(), i)))
             for i in query.all()
         )
-        return list(map(lambda i: i.dict(exclude={
-            'total', 'failures', *(i for i in columns.keys() if i.startswith('aggregation_'))
-        }), result))
-        # r = []
-        # for i in map(lambda i: i.dict(exclude={
+        # return list(map(lambda i: i.dict(exclude={
         #     'total', 'failures', *(i for i in columns.keys() if i.startswith('aggregation_'))
-        # }), result):
-        #     for _ in range(100):
-        #         r.append(i)
-        # return r
+        # }), result))
+        r = []
+        for i in map(lambda i: i.dict(exclude={
+            'total', 'failures', *(i for i in columns.keys() if i.startswith('aggregation_'))
+        }), result):
+            for _ in range(100):
+                r.append(i)
+        return r
 
     @web.rpc('performance_analysis_test_runs_ui_performance')
     @rpc_tools.wrap_exceptions(RuntimeError)
