@@ -107,6 +107,9 @@ const SummaryFilter = {
             chart_aggregation: 'mean',
             selected_filters: [],
             max_test_on_chart: 6,
+            show_expanded_chart: false,
+            expanded_chart_data: [],
+            expanded_chart_data_node: '',
         }
     },
     async mounted() {
@@ -252,26 +255,12 @@ const SummaryFilter = {
             this.handle_filter_changed()
         },
         handle_update_backend_charts() {
-
             const throughput_datasets = prepare_datasets(
                 window.charts.throughput,
                 this.aggregated_data_backend.throughput,
                 this.backend_tests_need_grouping,
                 `metric[${this.selected_aggregation_backend_mapped}]`
             )
-            // const throughput_datasets = []
-            // this.backend_tests_need_grouping && throughput_datasets.push({
-            //     ...dataset_max(get_gradient_max(window.charts.throughput)),
-            //     data: this.aggregated_data_backend.throughput.max
-            // })
-            // throughput_datasets.push({
-            //     ...dataset_main(),
-            //     data: this.aggregated_data_backend.throughput.main,
-            // })
-            // this.backend_tests_need_grouping && throughput_datasets.push({
-            //     ...dataset_min(get_gradient_min(window.charts.throughput)),
-            //     data: this.aggregated_data_backend.throughput.min
-            // })
             update_chart(window.charts.throughput, {
                 datasets: throughput_datasets,
                 labels: this.aggregated_data_backend.labels
@@ -281,67 +270,92 @@ const SummaryFilter = {
                     this.aggregated_data_backend.names
                 )
             })
-            // window.charts.throughput.data = {
-            //     datasets: throughput_datasets,
+
+            // const error_rate_datasets = []
+            // this.backend_tests_need_grouping && error_rate_datasets.push({
+            //     ...dataset_max(get_gradient_max(window.charts.error_rate)),
+            //     data: this.aggregated_data_backend.error_rate.max
+            // })
+            // error_rate_datasets.push({
+            //     ...dataset_main(`metric[${this.selected_aggregation_backend_mapped}]`),
+            //     data: this.aggregated_data_backend.error_rate.main
+            // })
+            // this.backend_tests_need_grouping && error_rate_datasets.push({
+            //     ...dataset_min(get_gradient_min(window.charts.error_rate)),
+            //     data: this.aggregated_data_backend.error_rate.min
+            // })
+            // window.charts.error_rate.data = {
+            //     datasets: error_rate_datasets,
             //     labels: this.aggregated_data_backend.labels,
             // }
-            // window.charts.throughput.options.plugins.tooltip = get_tooltip_options(
+            // window.charts.error_rate.options.plugins.tooltip = get_tooltip_options(
             //     this.aggregated_data_backend.aggregated_tests,
             //     this.aggregated_data_backend.names
             // )
-            // window.charts.throughput.update()
-
-            const error_rate_datasets = []
-            this.backend_tests_need_grouping && error_rate_datasets.push({
-                ...dataset_max(get_gradient_max(window.charts.error_rate)),
-                data: this.aggregated_data_backend.error_rate.max
-            })
-            error_rate_datasets.push({
-                ...dataset_main(`metric[${this.selected_aggregation_backend_mapped}]`),
-                data: this.aggregated_data_backend.error_rate.main
-            })
-            this.backend_tests_need_grouping && error_rate_datasets.push({
-                ...dataset_min(get_gradient_min(window.charts.error_rate)),
-                data: this.aggregated_data_backend.error_rate.min
-            })
-            window.charts.error_rate.data = {
+            // window.charts.error_rate.update()
+            const error_rate_datasets = prepare_datasets(
+                window.charts.error_rate,
+                this.aggregated_data_backend.error_rate,
+                this.backend_tests_need_grouping,
+                `metric[${this.selected_aggregation_backend_mapped}]`
+            )
+            update_chart(window.charts.error_rate, {
                 datasets: error_rate_datasets,
-                labels: this.aggregated_data_backend.labels,
-            }
-            window.charts.error_rate.options.plugins.tooltip = get_tooltip_options(
-                this.aggregated_data_backend.aggregated_tests,
-                this.aggregated_data_backend.names
-            )
-            window.charts.error_rate.update()
+                labels: this.aggregated_data_backend.labels
+            }, {
+                tooltip: get_tooltip_options(
+                    this.aggregated_data_backend.aggregated_tests,
+                    this.aggregated_data_backend.names
+                )
+            })
 
-            const response_time_datasets = []
-            this.backend_tests_need_grouping && response_time_datasets.push({
-                ...dataset_max(get_gradient_max(window.charts.response_time)),
-                data: this.aggregated_data_backend.aggregation.max
-            })
-            response_time_datasets.push({
-                ...dataset_main(`metric[${this.selected_aggregation_backend_mapped}]`),
-                data: this.aggregated_data_backend.aggregation.main
-            })
-            this.backend_tests_need_grouping && response_time_datasets.push({
-                ...dataset_min(get_gradient_min(window.charts.response_time)),
-                data: this.aggregated_data_backend.aggregation.min
-            })
-            window.charts.response_time.options.plugins.title.text = `RESPONSE TIME - ${this.selected_aggregation_backend}`
-            // window.charts.response_time.options.plugins.subtitle = {
-            //     display: true,
-            //     text: this.selected_aggregation_backend,
-            //     align: 'center',
+            // const response_time_datasets = []
+            // this.backend_tests_need_grouping && response_time_datasets.push({
+            //     ...dataset_max(get_gradient_max(window.charts.response_time)),
+            //     data: this.aggregated_data_backend.aggregation.max
+            // })
+            // response_time_datasets.push({
+            //     ...dataset_main(`metric[${this.selected_aggregation_backend_mapped}]`),
+            //     data: this.aggregated_data_backend.aggregation.main
+            // })
+            // this.backend_tests_need_grouping && response_time_datasets.push({
+            //     ...dataset_min(get_gradient_min(window.charts.response_time)),
+            //     data: this.aggregated_data_backend.aggregation.min
+            // })
+            // window.charts.response_time.options.plugins.title.text = `RESPONSE TIME - ${this.selected_aggregation_backend}`
+            // // window.charts.response_time.options.plugins.subtitle = {
+            // //     display: true,
+            // //     text: this.selected_aggregation_backend,
+            // //     align: 'center',
+            // // }
+            // window.charts.response_time.data = {
+            //     datasets: response_time_datasets,
+            //     labels: this.aggregated_data_backend.labels,
             // }
-            window.charts.response_time.data = {
-                datasets: response_time_datasets,
-                labels: this.aggregated_data_backend.labels,
-            }
-            window.charts.response_time.options.plugins.tooltip = get_tooltip_options(
-                this.aggregated_data_backend.aggregated_tests,
-                this.aggregated_data_backend.names
+            // window.charts.response_time.options.plugins.tooltip = get_tooltip_options(
+            //     this.aggregated_data_backend.aggregated_tests,
+            //     this.aggregated_data_backend.names
+            // )
+            // window.charts.response_time.update()
+            const response_time_datasets = prepare_datasets(
+                window.charts.response_time,
+                this.aggregated_data_backend.aggregation,
+                this.backend_tests_need_grouping,
+                `metric[${this.selected_aggregation_backend_mapped}]`
             )
-            window.charts.response_time.update()
+            update_chart(window.charts.response_time, {
+                datasets: response_time_datasets,
+                labels: this.aggregated_data_backend.labels
+            }, {
+                tooltip: get_tooltip_options(
+                    this.aggregated_data_backend.aggregated_tests,
+                    this.aggregated_data_backend.names
+                ),
+                title: {
+                    display: true,
+                    text: `RESPONSE TIME - ${this.selected_aggregation_backend}`
+                }
+            })
         },
         handle_update_ui_charts() {
             const datasets = []
@@ -391,10 +405,26 @@ const SummaryFilter = {
                 event.target.dataset.chart_name
             const chart = window.charts[chart_name]
             if (chart) {
-                Object.assign(window.charts.expanded_chart.options, chart.config.options)
-                Object.assign(window.charts.expanded_chart.data, chart.config.data)
-                window.charts.expanded_chart.update()
-                $('#expanded_chart_backdrop').modal('show')
+                // Object.assign(window.charts.expanded_chart.options, chart.config.options)
+                window.charts.expanded_chart.options.plugins.title.text = chart.config.options.plugins.title.text
+                window.charts.expanded_chart.options.plugins.tooltip = chart.config.options.plugins.tooltip
+                // Object.assign(window.charts.expanded_chart.data, chart.config.data)
+                // window.charts.expanded_chart.options.scales.x.ticks.maxTicksLimit = 11
+                // const group = ['throughput', 'error_rate', ''].includes(chart_name) ?
+                //     this.constants.backend_name : this.constants.ui_name
+                // this.expanded_chart_data = this.filtered_tests.filter(i => {
+                //     return i.group === group &&
+                // })
+                if (chart_name === 'page_speed') {
+                    this.expanded_chart_data = this.filtered_ui_tests
+                    this.expanded_chart_data_node = chart_name
+                } else {
+                    this.expanded_chart_data = this.filtered_backend_tests
+                    this.expanded_chart_data_node = chart_name === 'response_time' ? this.selected_aggregation_backend : chart_name
+                }
+                this.show_expanded_chart = true
+                // window.charts.expanded_chart.update()
+                // $('#expanded_chart_backdrop').modal('show')
             } else {
                 showNotify('ERROR', `No chart named ${chart_name} found`)
             }
@@ -497,7 +527,12 @@ const SummaryFilter = {
         },
         backend_tests_need_grouping() {
             return this.filtered_backend_tests.length > this.max_test_on_chart
-        }
+        },
+        // expanded_chart_data() {
+        //     return this.filtered_tests.filter(
+        //         i => i.group === this.constants.backend_name
+        //     )
+        // }
     },
     template: `
 <div>
@@ -505,7 +540,8 @@ const SummaryFilter = {
             <div class="d-flex flex-grow-1">
                 DEBUG || 
                 is_loading: [[ is_loading ]] || 
-                selected_filters: [[ selected_filters ]]
+                selected_filters: [[ selected_filters ]] ||
+                show_expanded_chart: [[ show_expanded_chart ]]
             </div>
             <div class="d-flex flex-grow-1">
                 <label>
@@ -674,6 +710,14 @@ const SummaryFilter = {
             <option value="pct99">99 pct</option>
         </select>
     </div>
+    <expanded-chart
+        modal_id="expanded_chart_backdrop"
+        :filtered_tests="expanded_chart_data"
+        v-model:show="show_expanded_chart"
+        :initial_max_test_on_chart="max_test_on_chart"
+        :initial_chart_aggregation="chart_aggregation"
+        :data_node="expanded_chart_data_node"
+    ></expanded-chart>
 </div>
     `
 }

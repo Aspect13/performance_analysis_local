@@ -261,8 +261,8 @@ const update_chart = (chart_obj, chart_data, chart_options_plugins) => {
 const get_tooltip_options = (arr_amounts, arr_names) => ({
     callbacks: {
         footer: tooltip_items => {
-            if (this.backend_tests_need_grouping) {
-                const tests_num = arr_amounts[tooltip_items[0].dataIndex]
+            const tests_num = arr_amounts[tooltip_items[0].dataIndex]
+            if (tests_num > 1) {
                 return `${tests_num} tests aggregated`
             }
         },
@@ -300,7 +300,7 @@ const get_common_chart_options = () => ({
                 ticks: {
                     display: true,
                     // count: 5,
-                    maxTicksLimit: 6,
+                    // maxTicksLimit: 6,
                     callback: function(value, index, ticks) {
                         return new Date(this.getLabelForValue(value)).toLocaleDateString()
                     }
@@ -323,21 +323,25 @@ window.charts = {}
 
 $(() => {
     let chart_options = get_common_chart_options()
+    chart_options.options.scales.x.ticks.maxTicksLimit = 6
     chart_options.options.scales.y.title.text = 'req/sec'
     chart_options.options.plugins.title.text = 'AVG. THROUGHPUT'
     window.charts.throughput = new Chart('throughput_chart', chart_options)
 
     chart_options = get_common_chart_options()
+    chart_options.options.scales.x.ticks.maxTicksLimit = 6
     chart_options.options.scales.y.title.text = '%'
     chart_options.options.plugins.title.text = 'ERROR RATE'
     window.charts.error_rate = new Chart('error_rate_chart', chart_options)
 
     chart_options = get_common_chart_options()
+    chart_options.options.scales.x.ticks.maxTicksLimit = 6
     chart_options.options.scales.y.title.text = 'ms'
     chart_options.options.plugins.title.text = 'RESPONSE TIME'
     window.charts.response_time = new Chart('response_time_chart', chart_options)
 
     chart_options = get_common_chart_options()
+    chart_options.options.scales.x.ticks.maxTicksLimit = 6
     chart_options.options.scales.y.title.text = 'ms'
     chart_options.options.plugins.title.text = 'PAGE SPEED'
     window.charts.page_speed = new Chart('page_speed_chart', chart_options)
