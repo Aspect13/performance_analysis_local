@@ -15,7 +15,7 @@ class API(Resource):
         start_time = request.args.get('start_time')
         end_time = request.args.get('end_time')
         result = []
-        for plugin in self.module.active_plugins:
+        for plugin in ['backend_performance', 'ui_performance']:
             rpc_result = self.module.context.rpc_manager.call_function_with_timeout(
                 func=f'performance_analysis_test_runs_{plugin}',
                 timeout=5,

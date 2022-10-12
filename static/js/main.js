@@ -1,5 +1,11 @@
 const api_base = '/api/v1'
 
+const page_constants = {
+    ui_name: 'ui_performance',
+    backend_name: 'backend_performance',
+    test_name_delimiter: '::',
+}
+
 var report_formatters = {
     name(value) {
         return value
@@ -63,18 +69,27 @@ const group_data = (tests, number_of_groups) => {
             error_rate: [],
             throughput: [],
             aggregations: {},
+            ui_metric: {}
         }
         data_slice.forEach(i => {
-            struct.error_rate.push(i.error_rate)
-            struct.throughput.push(i.throughput)
-            Object.entries(i.aggregations).forEach(([k, v]) => {
-                if (struct.aggregations[k]) {
-                    struct.aggregations[k].push(v)
-                } else {
-                    struct.aggregations[k] = [v]
-                }
-            })
+            switch (i.group) {
+                case page_constants.backend_name:
+                    struct.error_rate.push(i.metrics.error_rate)
+                    struct.throughput.push(i.metrics.throughput)
+                    Object.entries(i.aggregations).forEach(([k, v]) => {
+                        if (struct.aggregations[k]) {
+                            struct.aggregations[k].push(v)
+                        } else {
+                            struct.aggregations[k] = [v]
+                        }
+                    })
+                    break
+                case page_constants.ui_name:
 
+                    break
+                default:
+                    break
+            }
         })
         groups.push({
             name: data_slice.length > 1 ?
@@ -301,7 +316,7 @@ const get_common_chart_options = () => ({
                     display: true,
                     // count: 5,
                     // maxTicksLimit: 6,
-                    callback: function(value, index, ticks) {
+                    callback: function (value, index, ticks) {
                         return new Date(this.getLabelForValue(value)).toLocaleDateString()
                     }
                 }
@@ -322,26 +337,27 @@ const get_common_chart_options = () => ({
 window.charts = {}
 
 $(() => {
-    let chart_options = get_common_chart_options()
-    chart_options.options.scales.x.ticks.maxTicksLimit = 6
+    const get_small_chart_options = () => {
+        const opts = get_common_chart_options()
+        opts.options.scales.x.ticks.maxTicksLimit = 6
+        return opts
+    }
+    let chart_options = get_small_chart_options()
     chart_options.options.scales.y.title.text = 'req/sec'
     chart_options.options.plugins.title.text = 'AVG. THROUGHPUT'
     window.charts.throughput = new Chart('throughput_chart', chart_options)
 
-    chart_options = get_common_chart_options()
-    chart_options.options.scales.x.ticks.maxTicksLimit = 6
+    chart_options = get_small_chart_options()
     chart_options.options.scales.y.title.text = '%'
     chart_options.options.plugins.title.text = 'ERROR RATE'
     window.charts.error_rate = new Chart('error_rate_chart', chart_options)
 
-    chart_options = get_common_chart_options()
-    chart_options.options.scales.x.ticks.maxTicksLimit = 6
+    chart_options = get_small_chart_options()
     chart_options.options.scales.y.title.text = 'ms'
     chart_options.options.plugins.title.text = 'RESPONSE TIME'
     window.charts.response_time = new Chart('response_time_chart', chart_options)
 
-    chart_options = get_common_chart_options()
-    chart_options.options.scales.x.ticks.maxTicksLimit = 6
+    chart_options = get_small_chart_options()
     chart_options.options.scales.y.title.text = 'ms'
     chart_options.options.plugins.title.text = 'PAGE SPEED'
     window.charts.page_speed = new Chart('page_speed_chart', chart_options)

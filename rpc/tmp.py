@@ -6,74 +6,20 @@ from ...backend_performance.models.api_reports import APIReport
 from ...ui_performance.models.ui_report import UIReport
 from ...ui_performance.models.ui_tests import UIPerformanceTest
 
-from pydantic import BaseModel, validator, parse_obj_as
+from pydantic import BaseModel, validator, parse_obj_as, root_validator
 from datetime import datetime
 from typing import Optional, List, Dict
 from sqlalchemy import JSON, cast, Integer, String, literal_column, desc, asc, func
 from collections import OrderedDict
 
-class UIAnalysisModel(BaseModel):
-    group: str
-    name: str
-    start_time: datetime
-    test_type: str
-    test_env: str
-    aggregation: str
-    status: str
-    duration: int
-    tags: Optional[List[str]] = []
 
-
-
-class BackendAnalysisModel(BaseModel):
-    group: str
-    name: str
-    start_time: str
-    test_type: str
-    test_env: str
-    status: str
-    duration: int
+class BackendAnalysisMetrics(BaseModel):
     total: int
     failures: int
-    aggregation_min: float
-    aggregation_max: float
-    aggregation_mean: float
-    aggregation_pct50: float
-    aggregation_pct75: float
-    aggregation_pct90: float
-    aggregation_pct95: float
-    aggregation_pct99: float
     throughput: float
-    aggregations: Optional[Dict] = {}
-    tags: Optional[List[str]] = []
     error_rate: Optional[float]
 
-    @validator('aggregations', always=True)
-    def set_aggregations(cls, value: dict, values: dict):
-        if value:
-            return value
-        for k, v in values.items():
-            if k.startswith('aggregation_'):
-                value[k.split('_')[1]] = v
-        return value
-
-
-    # def dict(self, *args, **kwargs):
-    #     log.info('dict %s | %s', args, kwargs)
-    #     result = super().dict(*args, **kwargs)
-    #     aggregations = dict()
-    #     for k in list(result.keys()):
-    #         if 'aggregation' in k:
-    #             v = result.pop(k)
-    #             try:
-    #                 aggregations[k.split('_')[1]] = float(v)
-    #             except TypeError:
-    #                 aggregations[k.split('_')[1]] = v
-    #
-    #     result['aggregations'].update(aggregations)
-    #     return result
-
-    @validator('error_rate', always=True)
+    @validator('error_rate', always=True, pre=True, check_fields=False)
     def compute_error_rate(cls, value: float, values: dict) -> float:
         if value:
             return value
@@ -83,38 +29,96 @@ class BackendAnalysisModel(BaseModel):
             return 0
 
 
-class RPC:
-    @web.rpc('performance_analysis_tests_ui_performance')
-    @rpc_tools.wrap_exceptions(RuntimeError)
-    def ui_performance(self, project_id: int, **kwargs) -> list:
-        log.info('ui_performance rpc | %s | %s', project_id, kwargs)
-        query_result = UIPerformanceTest.query.with_entities(
-            UIPerformanceTest.name,
-        ).filter(
-            UIPerformanceTest.project_id == project_id
-        ).distinct(
-            UIPerformanceTest.name
-        ).all()
-        result = []
-        for i in query_result:
-            result.extend(i)
-        return result
+class AnalysisAggregations(BaseModel):
+    min: float
+    max: float
+    mean: float
+    pct50: float
+    pct75: float
+    pct90: float
+    pct95: float
+    pct99: float
 
-    @web.rpc('performance_analysis_tests_backend_performance')
-    @rpc_tools.wrap_exceptions(RuntimeError)
-    def backend_performance(self, project_id: int, **kwargs) -> list:
-        log.info('backend_performance rpc | %s | %s', project_id, kwargs)
-        query_result = PerformanceApiTest.query.with_entities(
-            PerformanceApiTest.name,
-        ).filter(
-            PerformanceApiTest.project_id == project_id
-        ).distinct(
-            PerformanceApiTest.name
-        ).all()
-        result = []
-        for i in query_result:
-            result.extend(i)
-        return result
+
+def aggregation_alias(name: str) -> str:
+    return f'aggregation_{name}'
+
+
+class BackendAnalysisAggregations(AnalysisAggregations):
+    class Config:
+        alias_generator = aggregation_alias
+
+
+class BaseAnalysisModel(BaseModel):
+    group: str
+    name: str
+    start_time: str
+    test_type: str
+    test_env: str
+    status: str
+    duration: int
+    tags: Optional[List[str]] = []
+
+
+class BackendAnalysisModel(BaseAnalysisModel):
+    metrics: BackendAnalysisMetrics
+    aggregations: Optional[BackendAnalysisAggregations] = {}
+
+    @root_validator(pre=True)
+    def set_nested_data(cls, values: dict) -> dict:
+        if not values.get('metrics'):
+            values['metrics'] = cls.__fields__['metrics'].type_.parse_obj(values)
+        if not values.get('aggregations'):
+            values['aggregations'] = cls.__fields__['aggregations'].type_.parse_obj(values)
+        return values
+
+
+class UIAnalysisMetrics(BaseModel):
+    total: AnalysisAggregations
+
+
+class UIAnalysisModel(BaseAnalysisModel):
+    metrics: UIAnalysisMetrics
+
+    @root_validator(pre=True)
+    def set_nested_data(cls, values: dict) -> dict:
+        if not values.get('metrics'):
+            values['metrics'] = cls.__fields__['metrics'].type_.parse_obj(values)
+        return values
+
+
+class RPC:
+    # @web.rpc('performance_analysis_tests_ui_performance')
+    # @rpc_tools.wrap_exceptions(RuntimeError)
+    # def ui_performance(self, project_id: int, **kwargs) -> list:
+    #     log.info('ui_performance rpc | %s | %s', project_id, kwargs)
+    #     query_result = UIPerformanceTest.query.with_entities(
+    #         UIPerformanceTest.name,
+    #     ).filter(
+    #         UIPerformanceTest.project_id == project_id
+    #     ).distinct(
+    #         UIPerformanceTest.name
+    #     ).all()
+    #     result = []
+    #     for i in query_result:
+    #         result.extend(i)
+    #     return result
+    #
+    # @web.rpc('performance_analysis_tests_backend_performance')
+    # @rpc_tools.wrap_exceptions(RuntimeError)
+    # def backend_performance(self, project_id: int, **kwargs) -> list:
+    #     log.info('backend_performance rpc | %s | %s', project_id, kwargs)
+    #     query_result = PerformanceApiTest.query.with_entities(
+    #         PerformanceApiTest.name,
+    #     ).filter(
+    #         PerformanceApiTest.project_id == project_id
+    #     ).distinct(
+    #         PerformanceApiTest.name
+    #     ).all()
+    #     result = []
+    #     for i in query_result:
+    #         result.extend(i)
+    #     return result
 
     @web.rpc('performance_analysis_test_runs_backend_performance')
     @rpc_tools.wrap_exceptions(RuntimeError)
@@ -153,7 +157,7 @@ class RPC:
             # APIReport.test_status['status'].in_(('Finished', 'Failed', 'Success'))
         ).order_by(
             asc(APIReport.start_time)
-        )  # todo: sort by time asc
+        )
 
         if end_time:
             query.filter(APIReport.end_time <= end_time)
@@ -166,9 +170,7 @@ class RPC:
         #     'total', 'failures', *(i for i in columns.keys() if i.startswith('aggregation_'))
         # }), result))
         r = []
-        for i in map(lambda i: i.dict(exclude={
-            'total', 'failures', *(i for i in columns.keys() if i.startswith('aggregation_'))
-        }), result):
+        for i in map(lambda i: i.dict(exclude={'total', 'failures'}), result):
             for _ in range(100):
                 r.append(i)
         return r
@@ -181,9 +183,6 @@ class RPC:
         log.info('ui_performance rpc | %s | %s', project_id, [start_time, end_time])
 
         return []
-
-
-
 
         columns = ('group', 'name', 'start_time', 'test_type', 'test_env', 'aggregation',
                    'status', 'duration', 'thresholds_total', 'thresholds_failed')

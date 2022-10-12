@@ -99,11 +99,6 @@ const SummaryFilter = {
             aggregation_ui_name_map: {},
             start_time: 'last_month',
             end_time: undefined,
-            constants: {
-                ui_name: 'ui_performance',
-                backend_name: 'backend_performance',
-                test_name_delimiter: '::',
-            },
             chart_aggregation: 'mean',
             selected_filters: [],
             max_test_on_chart: 6,
@@ -134,7 +129,7 @@ const SummaryFilter = {
             }
             this.tests = Array.from(this.all_data.reduce((accum, item) => {
                 (newValue.includes('all') || newValue.includes(item.group)) &&
-                accum.add(`${item.group.slice(0, 2)}${this.constants.test_name_delimiter}${item.name}`)
+                accum.add(`${item.group.slice(0, 2)}${page_constants.test_name_delimiter}${item.name}`)
                 return accum
             }, new Set()))
 
@@ -231,13 +226,13 @@ const SummaryFilter = {
             if (resp.ok) {
                 this.all_data = await resp.json()
                 this.all_data.push({
-                    total: {
-                        "aggregations": {
-                            "mean": 123,
+                    metrics: {
+                        total: {
+                            mean: 123,
                         }
                     },
                     "duration": 95,
-                    "group": this.constants.ui_name,
+                    "group": page_constants.ui_name,
                     "name": "mocked_ui_test",
                     "start_time": "2022-08-19T09:04:52.479000Z",
                     "status": "Finished",
@@ -271,28 +266,6 @@ const SummaryFilter = {
                 )
             })
 
-            // const error_rate_datasets = []
-            // this.backend_tests_need_grouping && error_rate_datasets.push({
-            //     ...dataset_max(get_gradient_max(window.charts.error_rate)),
-            //     data: this.aggregated_data_backend.error_rate.max
-            // })
-            // error_rate_datasets.push({
-            //     ...dataset_main(`metric[${this.selected_aggregation_backend_mapped}]`),
-            //     data: this.aggregated_data_backend.error_rate.main
-            // })
-            // this.backend_tests_need_grouping && error_rate_datasets.push({
-            //     ...dataset_min(get_gradient_min(window.charts.error_rate)),
-            //     data: this.aggregated_data_backend.error_rate.min
-            // })
-            // window.charts.error_rate.data = {
-            //     datasets: error_rate_datasets,
-            //     labels: this.aggregated_data_backend.labels,
-            // }
-            // window.charts.error_rate.options.plugins.tooltip = get_tooltip_options(
-            //     this.aggregated_data_backend.aggregated_tests,
-            //     this.aggregated_data_backend.names
-            // )
-            // window.charts.error_rate.update()
             const error_rate_datasets = prepare_datasets(
                 window.charts.error_rate,
                 this.aggregated_data_backend.error_rate,
@@ -366,8 +339,8 @@ const SummaryFilter = {
             datasets.push({
                 ...dataset_main(`metric[${this.selected_aggregation_ui_mapped}]`),
                 data: this.filtered_ui_tests.map(i => {
-                    const metric_data = i[this.selected_metric_ui]
-                    return metric_data && metric_data?.aggregations[this.selected_aggregation_ui]
+                    const metric_data = i.metrics[this.selected_metric_ui]
+                    return metric_data && metric_data[this.selected_aggregation_ui]
                 }),
             })
             // this.backend_tests_need_grouping && datasets.push({
@@ -411,7 +384,7 @@ const SummaryFilter = {
                 // Object.assign(window.charts.expanded_chart.data, chart.config.data)
                 // window.charts.expanded_chart.options.scales.x.ticks.maxTicksLimit = 11
                 // const group = ['throughput', 'error_rate', ''].includes(chart_name) ?
-                //     this.constants.backend_name : this.constants.ui_name
+                //     page_constants.backend_name : page_constants.ui_name
                 // this.expanded_chart_data = this.filtered_tests.filter(i => {
                 //     return i.group === group &&
                 // })
@@ -433,16 +406,16 @@ const SummaryFilter = {
     computed: {
         backend_test_selected() {
             return (
-                this.selected_groups.includes('all') || this.selected_groups.includes(this.constants.backend_name)
-            ) && this.groups.includes(this.constants.backend_name)
+                this.selected_groups.includes('all') || this.selected_groups.includes(page_constants.backend_name)
+            ) && this.groups.includes(page_constants.backend_name)
         },
         ui_test_selected() {
             return (
-                this.selected_groups.includes('all') || this.selected_groups.includes(this.constants.ui_name)
-            ) && this.groups.includes(this.constants.ui_name)
+                this.selected_groups.includes('all') || this.selected_groups.includes(page_constants.ui_name)
+            ) && this.groups.includes(page_constants.ui_name)
         },
         selected_tests_names() {
-            return this.selected_tests.map(i => i === 'all' ? 'all' : i.split(this.constants.test_name_delimiter)[1])
+            return this.selected_tests.map(i => i === 'all' ? 'all' : i.split(page_constants.test_name_delimiter)[1])
         },
         filtered_tests() {
             return this.all_data.filter(i => {
@@ -457,12 +430,12 @@ const SummaryFilter = {
         },
         filtered_backend_tests() {
             return this.filtered_tests.filter(
-                i => i.group === this.constants.backend_name
+                i => i.group === page_constants.backend_name
             )
         },
         filtered_ui_tests() {
             return this.filtered_tests.filter(
-                i => i.group === this.constants.ui_name
+                i => i.group === page_constants.ui_name
             )
         },
         timeframe() {
@@ -487,15 +460,15 @@ const SummaryFilter = {
             }
             return this.filtered_tests.reduce((accum, item) => {
                 switch (item.group) {
-                    case this.constants.backend_name:
+                    case page_constants.backend_name:
                         increment_accum(accum, 'aggregation_backend', item.aggregations[this.selected_aggregation_backend])
                         Array.from([
                             'throughput',
                             'error_rate',
-                        ]).forEach(i => increment_accum(accum, i, item[i]))
+                        ]).forEach(i => increment_accum(accum, i, item.metrics[i]))
                         increment_accum(accum, 'response_time', item.aggregations.mean)
                         break
-                    case this.constants.ui_name:
+                    case page_constants.ui_name:
                         const metric_data = item[this.selected_metric_ui]
                         metric_data && increment_accum(accum, 'aggregation_ui', metric_data?.aggregations[this.selected_aggregation_ui])
                         break
@@ -530,7 +503,7 @@ const SummaryFilter = {
         },
         // expanded_chart_data() {
         //     return this.filtered_tests.filter(
-        //         i => i.group === this.constants.backend_name
+        //         i => i.group === page_constants.backend_name
         //     )
         // }
     },

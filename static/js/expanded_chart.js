@@ -49,6 +49,9 @@ const ExpandedChart = {
             //     ),
             // })
             this.$nextTick(this.update_chart)
+        },
+        split_by_test(newValue) {
+
         }
     },
     methods: {
@@ -59,7 +62,7 @@ const ExpandedChart = {
             const data = prepare_datasets(
                 window.charts.expanded_chart,
                 this.aggregated_data.data,
-                this.max_test_on_chart < this.filtered_tests.length,
+                this.tests_need_grouping,
                 `metric[${this.data_node}]`
             )
             update_chart(window.charts.expanded_chart, {
@@ -71,14 +74,19 @@ const ExpandedChart = {
                     this.aggregated_data.names
                 ),
             })
+        },
+        need_grouping(tests) {
+            return tests.length > this.max_test_on_chart
         }
     },
     computed: {
         grouped_data() {
             return group_data(this.filtered_tests, this.max_test_on_chart)
         },
+        aggregation_callback() {
+            return aggregation_callback_map[this.chart_aggregation] || aggregation_callback_map.mean
+        },
         aggregated_data() {
-            const aggregation_callback = aggregation_callback_map[this.chart_aggregation] || aggregation_callback_map.mean
             const struct = {
                 labels: [],
                 aggregated_tests: [],
@@ -106,11 +114,14 @@ const ExpandedChart = {
                 struct.names.push(group.name)
                 struct.data.min.push(aggregation_callback_map.min(dataset))
                 struct.data.max.push(aggregation_callback_map.max(dataset))
-                struct.data.main.push(aggregation_callback(dataset))
+                struct.data.main.push(this.aggregation_callback(dataset))
             })
             console.log('aggregated', struct)
             return struct
         },
+        tests_need_grouping() {
+            return this.need_grouping(this.filtered_tests)
+        }
     },
     template: `
 <div :id="modal_id" class="modal" tabindex="-1">
@@ -127,22 +138,23 @@ const ExpandedChart = {
             <div class="modal-body">
 <!--                <p>Modal body text goes here.</p>-->
 <!--filtered_tests: [[ filtered_tests ]]-->
-<div class="d-flex">
+<div class="d-flex align-items-center">
 <div><h5>Toolbar</h5></div>
 <div class="d-flex flex-grow-1 justify-content-end align-items-center filter-container">
 
 <div class="custom-input custom-input__sm">
 <label class="d-flex align-items-center filter-container">
     <span>Max tests on chart</span>
-    <input type="number" class="form-control" style="margin: 0;"
+    <input type="number" class="form-control my-0" 
+        style="max-width: 60px;"
         v-model="max_test_on_chart"
     >
 </label>
 </div>
 
-<div class="d-inline-flex filter-container">
+<div class="d-inline-flex filter-container align-items-center">
 <span>Aggregated data</span>
-<label class="custom-toggle">
+<label class="custom-toggle mt-0">
 <input type="checkbox" v-model="split_by_test">
 <span class="custom-toggle_slider round"></span>
 </label>
