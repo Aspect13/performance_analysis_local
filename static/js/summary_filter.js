@@ -105,6 +105,7 @@ const SummaryFilter = {
             show_expanded_chart: false,
             expanded_chart_data: [],
             expanded_chart_data_node: '',
+            time_axis_type: false,
         }
     },
     async mounted() {
@@ -210,7 +211,13 @@ const SummaryFilter = {
         },
         chart_aggregation() {
             this.handle_update_charts()
-        }
+        },
+        time_axis_type(newValue) {
+            Object.values(window.charts).forEach(i => {
+                i.options.scales.x.type = newValue ? 'time' : 'category'
+                i.update()
+            })
+        },
     },
     methods: {
         refresh_pickers() {
@@ -683,12 +690,23 @@ const SummaryFilter = {
             <option value="pct99">99 pct</option>
         </select>
     </div>
+    
+    <div class="d-inline-flex filter-container align-items-center">
+        <span>categorical axis</span>
+        <label class="custom-toggle mt-0">
+            <input type="checkbox" v-model="time_axis_type">
+            <span class="custom-toggle_slider round"></span>
+        </label>
+        <span>time axis</span>
+    </div>
+
     <expanded-chart
         modal_id="expanded_chart_backdrop"
         :filtered_tests="expanded_chart_data"
         v-model:show="show_expanded_chart"
         :initial_max_test_on_chart="max_test_on_chart"
         :initial_chart_aggregation="chart_aggregation"
+        :initial_time_axis_type="time_axis_type"
         :data_node="expanded_chart_data_node"
     ></expanded-chart>
 </div>

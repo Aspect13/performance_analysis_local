@@ -1,12 +1,16 @@
 const ExpandedChart = {
     delimiters: ['[[', ']]'],
-    props: ['modal_id', 'filtered_tests', 'show', 'initial_max_test_on_chart', 'initial_chart_aggregation', 'data_node'],
+    props: [
+        'modal_id', 'filtered_tests', 'show',
+        'initial_max_test_on_chart', 'initial_chart_aggregation', 'initial_time_axis_type',
+        'data_node'],
     emits: ['update:show'],
     data() {
         return {
             chart_aggregation: 'mean',
             split_by_test: false,
             max_test_on_chart: 6,
+            time_axis_type: false,
         }
 
     },
@@ -20,6 +24,7 @@ const ExpandedChart = {
         $(this.$el).on('show.bs.modal', () => {
             this.max_test_on_chart = this.initial_max_test_on_chart
             this.chart_aggregation = this.initial_chart_aggregation
+            this.time_axis_type = this.initial_time_axis_type
             this.$emit('update:show', true)
             this.$nextTick(this.refresh_pickers)
             this.update_chart()
@@ -52,7 +57,11 @@ const ExpandedChart = {
         },
         split_by_test(newValue) {
 
-        }
+        },
+        time_axis_type(newValue) {
+            window.charts.expanded_chart.options.scales.x.type = newValue ? 'time' : 'category'
+            window.charts.expanded_chart.update()
+        },
     },
     methods: {
         refresh_pickers() {
@@ -153,12 +162,12 @@ const ExpandedChart = {
 </div>
 
 <div class="d-inline-flex filter-container align-items-center">
-<span>Aggregated data</span>
-<label class="custom-toggle mt-0">
-<input type="checkbox" v-model="split_by_test">
-<span class="custom-toggle_slider round"></span>
-</label>
-<span>Test split data</span>
+    <span>Aggregated data</span>
+    <label class="custom-toggle mt-0">
+        <input type="checkbox" v-model="split_by_test">
+        <span class="custom-toggle_slider round"></span>
+    </label>
+    <span>Test split data</span>
 </div>
 
 <div class="selectpicker-titled d-inline-flex">
@@ -175,6 +184,15 @@ const ExpandedChart = {
         <option value="pct95">95 pct</option>
         <option value="pct99">99 pct</option>
     </select>
+</div>
+
+<div class="d-inline-flex filter-container align-items-center">
+    <span>categorical axis</span>
+    <label class="custom-toggle mt-0">
+        <input type="checkbox" v-model="time_axis_type">
+        <span class="custom-toggle_slider round"></span>
+    </label>
+    <span>time axis</span>
 </div>
 
 <button class="btn btn-secondary">Some action</button>

@@ -28,8 +28,10 @@
 .chart-container {
     position: relative;
     /*border: 1px solid gray;*/
-    /*max-height: 250px;*/
-    max-height: 220px;
+    max-height: 250px;
+    /*max-height: 220px;*/
+    /*max-height: 620px;*/
+    height: 220px;
     /*max-width: 400px;*/
     max-width: 25%;
     flex-grow: 1;

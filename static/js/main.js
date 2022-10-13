@@ -317,7 +317,13 @@ const get_common_chart_options = () => ({
                     // count: 5,
                     // maxTicksLimit: 6,
                     callback: function (value, index, ticks) {
-                        return new Date(this.getLabelForValue(value)).toLocaleDateString()
+                        switch (this.type) {
+                            case 'category':
+                                return new Date(this.getLabelForValue(value)).toLocaleDateString()
+                            case 'time':
+                            default:
+                                return value
+                        }
                     }
                 }
             }
@@ -340,6 +346,8 @@ $(() => {
     const get_small_chart_options = () => {
         const opts = get_common_chart_options()
         opts.options.scales.x.ticks.maxTicksLimit = 6
+        opts.options.maintainAspectRatio = false
+        // opts.options.aspectRatio = 1
         return opts
     }
     let chart_options = get_small_chart_options()
