@@ -17,7 +17,7 @@
 
         {# charts #}
         <div class="d-flex justify-content-between my-3">
-            <div class="mr-1 chart-container">
+            <div class="chart-container">
                 <button type="button" class="btn btn-secondary btn-sm btn-icon__sm"
                         data-chart_name="throughput"
                         @click="registered_components.summary_filter?.handle_expand_chart"
@@ -26,7 +26,7 @@
                 </button>
                 <canvas id="throughput_chart"></canvas>
             </div>
-            <div class="mx-1 chart-container">
+            <div class="chart-container">
                 <button type="button" class="btn btn-secondary btn-sm btn-icon__sm"
                         data-chart_name="error_rate"
                         @click="registered_components.summary_filter?.handle_expand_chart"
@@ -35,7 +35,7 @@
                 </button>
                 <canvas id="error_rate_chart"></canvas>
             </div>
-            <div class="mx-1 chart-container">
+            <div class="chart-container">
                 <button type="button" class="btn btn-secondary btn-sm btn-icon__sm"
                         data-chart_name="response_time"
                         @click="registered_components.summary_filter?.handle_expand_chart"
@@ -44,7 +44,7 @@
                 </button>
                 <canvas id="response_time_chart"></canvas>
             </div>
-            <div class="ml-1 chart-container">
+            <div class="chart-container">
                 <button type="button" class="btn btn-secondary btn-sm btn-icon__sm"
                         data-chart_name="page_speed"
                         @click="registered_components.summary_filter?.handle_expand_chart"

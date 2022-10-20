@@ -88,38 +88,6 @@ class UIAnalysisModel(BaseAnalysisModel):
 
 
 class RPC:
-    # @web.rpc('performance_analysis_tests_ui_performance')
-    # @rpc_tools.wrap_exceptions(RuntimeError)
-    # def ui_performance(self, project_id: int, **kwargs) -> list:
-    #     log.info('ui_performance rpc | %s | %s', project_id, kwargs)
-    #     query_result = UIPerformanceTest.query.with_entities(
-    #         UIPerformanceTest.name,
-    #     ).filter(
-    #         UIPerformanceTest.project_id == project_id
-    #     ).distinct(
-    #         UIPerformanceTest.name
-    #     ).all()
-    #     result = []
-    #     for i in query_result:
-    #         result.extend(i)
-    #     return result
-    #
-    # @web.rpc('performance_analysis_tests_backend_performance')
-    # @rpc_tools.wrap_exceptions(RuntimeError)
-    # def backend_performance(self, project_id: int, **kwargs) -> list:
-    #     log.info('backend_performance rpc | %s | %s', project_id, kwargs)
-    #     query_result = PerformanceApiTest.query.with_entities(
-    #         PerformanceApiTest.name,
-    #     ).filter(
-    #         PerformanceApiTest.project_id == project_id
-    #     ).distinct(
-    #         PerformanceApiTest.name
-    #     ).all()
-    #     result = []
-    #     for i in query_result:
-    #         result.extend(i)
-    #     return result
-
     @web.rpc('performance_analysis_test_runs_backend_performance')
     @rpc_tools.wrap_exceptions(RuntimeError)
     def backend_performance_tr(self, project_id: int,
@@ -166,14 +134,12 @@ class RPC:
             BackendAnalysisModel.parse_obj(dict(zip(columns.keys(), i)))
             for i in query.all()
         )
-        # return list(map(lambda i: i.dict(exclude={
-        #     'total', 'failures', *(i for i in columns.keys() if i.startswith('aggregation_'))
-        # }), result))
-        r = []
-        for i in map(lambda i: i.dict(exclude={'total', 'failures'}), result):
-            for _ in range(100):
-                r.append(i)
-        return r
+        return list(map(lambda i: i.dict(exclude={'total', 'failures'}), result))
+        # r = []
+        # for i in r:
+        #     for _ in range(100):
+        #         r.append(i)
+        # return r
 
     @web.rpc('performance_analysis_test_runs_ui_performance')
     @rpc_tools.wrap_exceptions(RuntimeError)

@@ -53,7 +53,83 @@ const quantile = (arr, percent) => {
     }
 }
 
-const group_data = (tests, number_of_groups) => {
+const calculate_time_groups = (start_time, end_time, n_of_groups, iso_format = false) => {
+    const start_date = new Date(start_time)
+    const end_date = new Date(end_time)
+    const period = end_date - start_date
+    const synthetic_groups_num = n_of_groups - 1
+    if (period === 0 || synthetic_groups_num < 1) {
+        return [start_date]
+    }
+    const group_time_span = Math.ceil(period / synthetic_groups_num)
+    const time = start_date.getTime()
+    const result = iso_format ? [start_date.toISOString()] : [start_date]
+    for (let i = 1; i < synthetic_groups_num; i++) {
+        const tmp_date = new Date(time + group_time_span * i)
+        result.push(iso_format ? tmp_date.toISOString() : tmp_date)
+    }
+    result.push(iso_format ? end_date.toISOString() : end_date)
+    return result
+}
+
+const process_data_slice = (data_slice, name = undefined) => {
+    const struct = {
+        error_rate: [],
+        throughput: [],
+        aggregations: {},
+        aggregated_tests: data_slice.length,
+        start_time: data_slice[data_slice.length - 1]?.start_time,
+        name: name
+    }
+    data_slice.forEach(i => {
+        switch (i.group) {
+            case page_constants.backend_name:
+                struct.error_rate.push(i.metrics.error_rate)
+                struct.throughput.push(i.metrics.throughput)
+                Object.entries(i.aggregations).forEach(([k, v]) => {
+                    if (struct.aggregations[k]) {
+                        struct.aggregations[k].push(v)
+                    } else {
+                        struct.aggregations[k] = [v]
+                    }
+                })
+                break
+            case page_constants.ui_name:
+                // todo: handle ui test group
+                break
+            default:
+                break
+        }
+    })
+    return struct
+}
+
+const group_data_by_timeline = (tests, number_of_groups, name_prefix = 'group') => {
+    // we assume that tests are sorted asc by time
+    const time_groups = calculate_time_groups(tests.at(0).start_time, tests.at(-1).start_time, number_of_groups)
+    // const mutable_tests = Array.from(tests)
+    // const test_fits_time_group = (test, time_group) => time_group > new Date(test.start_time)
+    let pointers = [0, 0]
+    return time_groups.map(time_group => {
+        for (let i = pointers[1]; i < tests.length; i++) {
+            pointers[1] = i
+            if (new Date(tests[i].start_time) > time_group) {
+                break
+            }
+            // time_group > new Date(tests[i].start_time) && pointers[1]++
+        }
+        const data_slice = tests.slice(...pointers)
+        // const group_name = data_slice.length > 1 ?
+        //     `${name_prefix} ${pointers[0] + 1}-${pointers[1]}` :
+        //     data_slice[0].name
+        const struct = process_data_slice(data_slice, time_group)
+        struct.start_time = time_group
+        pointers[0] = pointers[1]
+        return struct
+    })
+}
+
+const group_data = (tests, number_of_groups, name_prefix = 'group') => {
     let residual = tests.length % number_of_groups
     const group_size = ~~(tests.length / number_of_groups)
     let groups = []
@@ -65,40 +141,45 @@ const group_data = (tests, number_of_groups) => {
             residual--
         }
         const data_slice = tests.slice(...pointers)
-        const struct = {
-            error_rate: [],
-            throughput: [],
-            aggregations: {},
-            ui_metric: {}
-        }
-        data_slice.forEach(i => {
-            switch (i.group) {
-                case page_constants.backend_name:
-                    struct.error_rate.push(i.metrics.error_rate)
-                    struct.throughput.push(i.metrics.throughput)
-                    Object.entries(i.aggregations).forEach(([k, v]) => {
-                        if (struct.aggregations[k]) {
-                            struct.aggregations[k].push(v)
-                        } else {
-                            struct.aggregations[k] = [v]
-                        }
-                    })
-                    break
-                case page_constants.ui_name:
-
-                    break
-                default:
-                    break
-            }
-        })
-        groups.push({
-            name: data_slice.length > 1 ?
-                `group ${pointers[0] + 1}-${pointers[1]}` :
-                data_slice[0].name,
-            aggregated_tests: pointers[1] - pointers[0],
-            start_time: data_slice[data_slice.length - 1].start_time, // take start time from last entry of slice
-            ...struct
-        })
+        // const struct = {
+        //     error_rate: [],
+        //     throughput: [],
+        //     aggregations: {},
+        //     // ui_metric: {}
+        // }
+        // data_slice.forEach(i => {
+        //     switch (i.group) {
+        //         case page_constants.backend_name:
+        //             struct.error_rate.push(i.metrics.error_rate)
+        //             struct.throughput.push(i.metrics.throughput)
+        //             Object.entries(i.aggregations).forEach(([k, v]) => {
+        //                 if (struct.aggregations[k]) {
+        //                     struct.aggregations[k].push(v)
+        //                 } else {
+        //                     struct.aggregations[k] = [v]
+        //                 }
+        //             })
+        //             break
+        //         case page_constants.ui_name:
+        //             // todo: handle ui test group
+        //             break
+        //         default:
+        //             break
+        //     }
+        // })
+        // groups.push({
+        //     name: data_slice.length > 1 ?
+        //         `${name_prefix} ${pointers[0] + 1}-${pointers[1]}` :
+        //         data_slice[0].name,
+        //     aggregated_tests: pointers[1] - pointers[0],
+        //     start_time: data_slice[data_slice.length - 1].start_time, // take start time from last entry of slice
+        //     ...struct
+        // })
+        const group_name = data_slice.length > 1 ?
+            `${name_prefix} ${pointers[0] + 1}-${pointers[1]}` :
+            data_slice[0].name
+        const struct = process_data_slice(data_slice, group_name)
+        groups.push(struct)
         pointers[0] = pointers[1]
     }
     return groups
@@ -141,7 +222,7 @@ const aggregate_data = (grouped_data, group_aggregations_key, data_aggregation_t
         // O(n)
         const aggregation_data = group.aggregations[group_aggregations_key]
         !aggregation_data && console.warn(
-            'No aggregation "', group_aggregations_key, '" data for ', group
+            'No aggregation "', group_aggregations_key, '" for ', group
         )
         struct.labels.push(group.start_time)
         struct.aggregated_tests.push(group.aggregated_tests)
@@ -150,8 +231,19 @@ const aggregate_data = (grouped_data, group_aggregations_key, data_aggregation_t
         struct.throughput.max.push(aggregation_callback_map.max(group.throughput))
         struct.error_rate.min.push(aggregation_callback_map.min(group.error_rate))
         struct.error_rate.max.push(aggregation_callback_map.max(group.error_rate))
-        struct.aggregation.min.push(aggregation_callback_map.min(aggregation_data))
-        struct.aggregation.max.push(aggregation_callback_map.max(aggregation_data))
+
+        // following is to apply min-max to selected metric,
+        // but we need to apply aggregation_callback to group.aggregations.min and group.aggregations.max
+        // struct.aggregation.min.push(aggregation_callback_map.min(aggregation_data))
+        // struct.aggregation.max.push(aggregation_callback_map.max(aggregation_data))
+        // this will apply aggregation function to metric's min and max aggregated values
+        !group.aggregations.min ?
+            console.warn('No aggregation "min" for ', group) :
+            struct.aggregation.min.push(aggregation_callback(group.aggregations.min))
+
+        !group.aggregations.max ?
+            console.warn('No aggregation "max" for ', group) :
+            struct.aggregation.max.push(aggregation_callback(group.aggregations.max))
         switch (data_aggregation_type) {
             case 'min':
                 struct.throughput.main = struct.throughput.min
@@ -170,7 +262,7 @@ const aggregate_data = (grouped_data, group_aggregations_key, data_aggregation_t
                 break
         }
     })
-    console.log('aggregated', struct)
+    // console.log('aggregated', struct)
     return struct
 }
 
@@ -201,18 +293,22 @@ const change_aggregation_key = (grouped_data, aggregation_type, struct, group_ag
 }
 
 const get_gradient_max = chart_obj => {
-    const gradient = chart_obj.ctx.createLinearGradient(0, 20, 0, 120)
-    gradient.addColorStop(0, 'red')
+    const {clientHeight} = chart_obj.ctx.canvas
+    const gradient = chart_obj.ctx.createLinearGradient(0, 60, 0, clientHeight)
+    gradient.addColorStop(0, 'crimson')
+    gradient.addColorStop(0.2, 'red')
     gradient.addColorStop(0.8, 'orange')
     gradient.addColorStop(1, 'yellow')
     return gradient
 }
 
 const get_gradient_min = chart_obj => {
-    const gradient = chart_obj.ctx.createLinearGradient(0, 0, 0, 20)
-    gradient.addColorStop(0, 'blue')
-    gradient.addColorStop(0.3, 'cyan')
-    gradient.addColorStop(1, 'green')
+    const {clientHeight} = chart_obj.ctx.canvas
+    const gradient = chart_obj.ctx.createLinearGradient(0, 60, 0, clientHeight)
+    gradient.addColorStop(0, 'greenyellow')
+    gradient.addColorStop(0.1, 'lightgreen')
+    gradient.addColorStop(0.9, 'green')
+    gradient.addColorStop(1, 'darkgreen')
     return gradient
 }
 
@@ -227,29 +323,28 @@ const dataset_main = (label = '', color = '#5933c6') => ({
     fill: false,
 })
 
-const dataset_max = gradient => ({
-    ...dataset_main('max', gradient),
+const dataset_max = (label, color) => ({
+    ...dataset_main(label, color),
     borderDash: [5, 5],
     borderWidth: 1,
     fill: '+1',
     backgroundColor: '#ff800020',
-    // backgroundColor: gradient,
 })
 
-const dataset_min = gradient => ({
-    ...dataset_main('min', gradient),
+const dataset_min = (label, color) => ({
+    ...dataset_main(label, color),
     borderDash: [5, 5],
     borderWidth: 1,
     fill: '-1',
     backgroundColor: '#00800020',
-    // backgroundColor: gradient,
 })
 
 
-const prepare_datasets = (chart_obj, data_node, draw_min_max, dataset_label = '') => {
+const prepare_datasets = (chart_obj, data_node, draw_min_max, dataset_label = '',
+                          min_label = 'min', max_label = 'max') => {
     const datasets = []
     draw_min_max && datasets.push({
-        ...dataset_max(get_gradient_max(chart_obj)),
+        ...dataset_max(max_label, get_gradient_max(chart_obj)),
         data: data_node.max
     })
     datasets.push({
@@ -257,7 +352,7 @@ const prepare_datasets = (chart_obj, data_node, draw_min_max, dataset_label = ''
         data: data_node.main,
     })
     draw_min_max && datasets.push({
-        ...dataset_min(get_gradient_min(chart_obj)),
+        ...dataset_min(min_label, get_gradient_min(chart_obj)),
         data: data_node.min
     })
     return datasets
@@ -295,7 +390,7 @@ const get_common_chart_options = () => ({
         // aspectRatio: 2,
         interaction: {
             mode: 'index',
-            intersect: false
+            intersect: false,
         },
         scales: {
             y: {
@@ -309,6 +404,14 @@ const get_common_chart_options = () => ({
             },
             x: {
                 // type: 'time',
+                time: {
+                    // unit: 'day',
+                    displayFormats: {
+                        // day: 'dd MM'
+                        day: 'P'
+                    },
+                    minUnit: 'hour'
+                },
                 grid: {
                     display: false
                 },
@@ -319,7 +422,10 @@ const get_common_chart_options = () => ({
                     callback: function (value, index, ticks) {
                         switch (this.type) {
                             case 'category':
+                                // return this.getLabelForValue(value)
                                 return new Date(this.getLabelForValue(value)).toLocaleDateString()
+                            // return new Date(this.getLabelForValue(value)).toLocaleDateString(undefined,
+                            //     {day: '2-digit', month: '2-digit'})
                             case 'time':
                             default:
                                 return value

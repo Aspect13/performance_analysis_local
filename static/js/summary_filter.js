@@ -102,9 +102,15 @@ const SummaryFilter = {
             chart_aggregation: 'mean',
             selected_filters: [],
             max_test_on_chart: 6,
-            show_expanded_chart: false,
-            expanded_chart_data: [],
-            expanded_chart_data_node: '',
+            expanded_chart: {
+                show: false,
+                data: [],
+                data_node: '',
+                title: ''
+            },
+            // show_expanded_chart: false,
+            // expanded_chart_data: [],
+            // expanded_chart_data_node: '',
             time_axis_type: false,
         }
     },
@@ -261,6 +267,7 @@ const SummaryFilter = {
                 window.charts.throughput,
                 this.aggregated_data_backend.throughput,
                 this.backend_tests_need_grouping,
+                // true,
                 `metric[${this.selected_aggregation_backend_mapped}]`
             )
             update_chart(window.charts.throughput, {
@@ -277,6 +284,7 @@ const SummaryFilter = {
                 window.charts.error_rate,
                 this.aggregated_data_backend.error_rate,
                 this.backend_tests_need_grouping,
+                // true,
                 `metric[${this.selected_aggregation_backend_mapped}]`
             )
             update_chart(window.charts.error_rate, {
@@ -320,7 +328,8 @@ const SummaryFilter = {
             const response_time_datasets = prepare_datasets(
                 window.charts.response_time,
                 this.aggregated_data_backend.aggregation,
-                this.backend_tests_need_grouping,
+                // this.backend_tests_need_grouping,
+                true,
                 `metric[${this.selected_aggregation_backend_mapped}]`
             )
             update_chart(window.charts.response_time, {
@@ -386,8 +395,9 @@ const SummaryFilter = {
             const chart = window.charts[chart_name]
             if (chart) {
                 // Object.assign(window.charts.expanded_chart.options, chart.config.options)
-                window.charts.expanded_chart.options.plugins.title.text = chart.config.options.plugins.title.text
-                window.charts.expanded_chart.options.plugins.tooltip = chart.config.options.plugins.tooltip
+                // window.charts.expanded_chart.options.plugins.title.text = chart.config.options.plugins.title.text
+                this.expanded_chart.title = chart.config.options.plugins.title.text
+                // window.charts.expanded_chart.options.plugins.tooltip = chart.config.options.plugins.tooltip
                 // Object.assign(window.charts.expanded_chart.data, chart.config.data)
                 // window.charts.expanded_chart.options.scales.x.ticks.maxTicksLimit = 11
                 // const group = ['throughput', 'error_rate', ''].includes(chart_name) ?
@@ -396,13 +406,18 @@ const SummaryFilter = {
                 //     return i.group === group &&
                 // })
                 if (chart_name === 'page_speed') {
-                    this.expanded_chart_data = this.filtered_ui_tests
-                    this.expanded_chart_data_node = chart_name
+                    // this.expanded_chart_data = this.filtered_ui_tests
+                    // this.expanded_chart_data_node = chart_name
+                    this.expanded_chart.data = this.filtered_ui_tests
+                    this.expanded_chart.data_node = chart_name
                 } else {
-                    this.expanded_chart_data = this.filtered_backend_tests
-                    this.expanded_chart_data_node = chart_name === 'response_time' ? this.selected_aggregation_backend : chart_name
+                    // this.expanded_chart_data = this.filtered_backend_tests
+                    // this.expanded_chart_data_node = chart_name === 'response_time' ? this.selected_aggregation_backend : chart_name
+                    this.expanded_chart.data = this.filtered_backend_tests
+                    this.expanded_chart.data_node = chart_name === 'response_time' ?
+                        this.selected_aggregation_backend : chart_name
                 }
-                this.show_expanded_chart = true
+                this.expanded_chart.show = true
                 // window.charts.expanded_chart.update()
                 // $('#expanded_chart_backdrop').modal('show')
             } else {
@@ -508,11 +523,6 @@ const SummaryFilter = {
         backend_tests_need_grouping() {
             return this.filtered_backend_tests.length > this.max_test_on_chart
         },
-        // expanded_chart_data() {
-        //     return this.filtered_tests.filter(
-        //         i => i.group === page_constants.backend_name
-        //     )
-        // }
     },
     template: `
 <div>
@@ -521,7 +531,7 @@ const SummaryFilter = {
                 DEBUG || 
                 is_loading: [[ is_loading ]] || 
                 selected_filters: [[ selected_filters ]] ||
-                show_expanded_chart: [[ show_expanded_chart ]]
+                expanded_chart: [[ expanded_chart.show ]] [[ expanded_chart.title ]] [[ expanded_chart.data_node ]]
             </div>
             <div class="d-flex flex-grow-1">
                 <label>
@@ -702,12 +712,13 @@ const SummaryFilter = {
 
     <expanded-chart
         modal_id="expanded_chart_backdrop"
-        :filtered_tests="expanded_chart_data"
-        v-model:show="show_expanded_chart"
+        :filtered_tests="expanded_chart.data"
+        v-model:show="expanded_chart.show"
         :initial_max_test_on_chart="max_test_on_chart"
         :initial_chart_aggregation="chart_aggregation"
         :initial_time_axis_type="time_axis_type"
-        :data_node="expanded_chart_data_node"
+        :data_node="expanded_chart.data_node"
+        :title="expanded_chart.title"
     ></expanded-chart>
 </div>
     `
