@@ -221,8 +221,9 @@ const SummaryFilter = {
         time_axis_type(newValue) {
             Object.values(window.charts).forEach(i => {
                 i.options.scales.x.type = newValue ? 'time' : 'category'
-                i.update()
+                // i.update()
             })
+            this.handle_update_charts()
         },
     },
     methods: {
@@ -515,14 +516,24 @@ const SummaryFilter = {
                 || this.selected_metric_ui
         },
         grouped_data_backend() {
-            return group_data(this.filtered_backend_tests, this.max_test_on_chart)
+            return this.time_axis_type ?
+                group_data_by_timeline(this.filtered_backend_tests, this.max_test_on_chart) :
+                group_data(this.filtered_backend_tests, this.max_test_on_chart)
         },
         aggregated_data_backend() {
             return aggregate_data(this.grouped_data_backend, this.selected_aggregation_backend, this.chart_aggregation)
         },
         backend_tests_need_grouping() {
-            return this.filtered_backend_tests.length > this.max_test_on_chart
+            return this.filtered_backend_tests.length > this.max_test_on_chart || this.time_axis_type
         },
+        tmp() {
+            return this.filtered_backend_tests.length > 0 && calculate_time_groups(
+                this.filtered_backend_tests.at(0).start_time,
+                this.filtered_backend_tests.at(-1).start_time,
+                this.max_test_on_chart,
+                false
+                ).map(i => i.toLocaleString())
+        }
     },
     template: `
 <div>
@@ -540,6 +551,23 @@ const SummaryFilter = {
                 </label>
             </div>
     </div>
+    <div class="d-flex" style="background-color: #80808080">
+        <div class="d-flex flex-grow-1">
+            time groups: <pre>[[ tmp ]]</pre>
+        </div>
+        <div class="d-flex flex-grow-1">
+            tests times: <pre>[[ filtered_backend_tests.map(i => new Date(i.start_time).toLocaleString()) ]]</pre>
+        </div>
+    </div>
+    <div class="d-flex" style="background-color: #80808080">
+        <div class="d-flex flex-grow-1">
+            <pre>[[ grouped_data_backend ]]</pre>
+        </div>
+        <div class="d-flex flex-grow-1">
+            <pre>[[ aggregated_data_backend ]]</pre>
+        </div>
+    </div>
+    
     <div class="d-flex flex-wrap filter-container">
 <!--        <div class="d-flex justify-content-between flex-grow-1">-->
 

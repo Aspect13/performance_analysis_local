@@ -53,22 +53,24 @@ const quantile = (arr, percent) => {
     }
 }
 
-const calculate_time_groups = (start_time, end_time, n_of_groups, iso_format = false) => {
+const calculate_time_groups = (start_time, end_time, n_of_groups) => {
     const start_date = new Date(start_time)
     const end_date = new Date(end_time)
     const period = end_date - start_date
-    const synthetic_groups_num = n_of_groups - 1
-    if (period === 0 || synthetic_groups_num < 1) {
-        return [start_date]
+    // const synthetic_groups_num = n_of_groups - 1
+    if (period === 0) {
+        return [[start_date, end_date]]
     }
-    const group_time_span = Math.ceil(period / synthetic_groups_num)
+    const group_time_span = Math.ceil(period / n_of_groups)
     const time = start_date.getTime()
-    const result = iso_format ? [start_date.toISOString()] : [start_date]
-    for (let i = 1; i < synthetic_groups_num; i++) {
-        const tmp_date = new Date(time + group_time_span * i)
-        result.push(iso_format ? tmp_date.toISOString() : tmp_date)
+    const result = []
+    let previous_stamp = start_date
+    for (let i = 1; i < n_of_groups; i++) {
+        const next_stamp = new Date(time + group_time_span * i)
+        result.push([previous_stamp, next_stamp])
+        previous_stamp = next_stamp
     }
-    result.push(iso_format ? end_date.toISOString() : end_date)
+    result.push([previous_stamp, end_date])
     return result
 }
 
@@ -104,20 +106,28 @@ const process_data_slice = (data_slice, name = undefined) => {
     return struct
 }
 
-const group_data_by_timeline = (tests, number_of_groups, name_prefix = 'group') => {
+const group_data_by_timeline = (tests, number_of_groups) => {
+    if (tests.length === 0) {
+        return []
+    }
     // we assume that tests are sorted asc by time
+    // we probably need to group tests differently like time stamp + half step and check if it is in range
     const time_groups = calculate_time_groups(tests.at(0).start_time, tests.at(-1).start_time, number_of_groups)
-    // const mutable_tests = Array.from(tests)
-    // const test_fits_time_group = (test, time_group) => time_group > new Date(test.start_time)
     let pointers = [0, 0]
-    return time_groups.map(time_group => {
-        for (let i = pointers[1]; i < tests.length; i++) {
-            pointers[1] = i
-            if (new Date(tests[i].start_time) > time_group) {
+
+    /*
+    const tmp1 = time_groups.map(time_group => {
+        pointers[0] = pointers[1]
+        for (pointers[1]; pointers[1] < tests.length; pointers[1]++) {
+            // pointers[1] = i
+            const tmp = new Date(tests[pointers[1]].start_time) > time_group
+            if (tmp) {
                 break
             }
             // time_group > new Date(tests[i].start_time) && pointers[1]++
         }
+        // pointers[1]++
+        return tests.slice(...pointers)
         const data_slice = tests.slice(...pointers)
         // const group_name = data_slice.length > 1 ?
         //     `${name_prefix} ${pointers[0] + 1}-${pointers[1]}` :
@@ -125,6 +135,45 @@ const group_data_by_timeline = (tests, number_of_groups, name_prefix = 'group') 
         const struct = process_data_slice(data_slice, time_group)
         struct.start_time = time_group
         pointers[0] = pointers[1]
+        return struct
+    })
+    return tmp1.map((data_slice, index) => {
+        const time_group = time_groups[index]
+        const struct = process_data_slice(data_slice, time_group.toLocaleString())
+        struct.start_time = time_group
+        pointers[0] = pointers[1]
+        return struct
+    })
+    */
+
+    const test_fits_current_group = (test, time_group) => {
+        const test_time = new Date(tests[pointers[1]].start_time)
+        return time_group[0] <= test_time && test_time <= time_group[1]
+    }
+    const get_time_group_label = time_group => {
+        if (time_groups.indexOf(time_group) === 0) {
+            return time_group[0]
+        } else if (time_groups.indexOf(time_group) === number_of_groups - 1) {
+            return time_group[1]
+        } else {
+           return new Date(Math.ceil(time_group.reduce((a, b) => a.getTime() + b.getTime()) / time_group.length))
+        }
+    }
+
+    return time_groups.map(time_group => {
+        pointers[0] = pointers[1]
+        for (pointers[1]; pointers[1] < tests.length; pointers[1]++) {
+            // if (new Date(tests[pointers[1]].start_time) > time_group) {
+            if (!test_fits_current_group(tests[pointers[1]], time_group)) {
+                break
+            }
+        }
+        const data_slice = tests.slice(...pointers)
+        const group_name = data_slice.length > 1 ?
+            `${new Date(data_slice.at(0).start_time).toLocaleString()} - ${new Date(data_slice.at(-1).start_time).toLocaleString()}` :
+            data_slice[0]?.name
+        const struct = process_data_slice(data_slice, group_name)
+        struct.start_time = get_time_group_label(time_group)
         return struct
     })
 }
@@ -224,8 +273,8 @@ const aggregate_data = (grouped_data, group_aggregations_key, data_aggregation_t
         !aggregation_data && console.warn(
             'No aggregation "', group_aggregations_key, '" for ', group
         )
-        struct.labels.push(group.start_time)
         struct.aggregated_tests.push(group.aggregated_tests)
+        struct.labels.push(group.start_time)
         struct.names.push(group.name)
         struct.throughput.min.push(aggregation_callback_map.min(group.throughput))
         struct.throughput.max.push(aggregation_callback_map.max(group.throughput))
@@ -237,13 +286,13 @@ const aggregate_data = (grouped_data, group_aggregations_key, data_aggregation_t
         // struct.aggregation.min.push(aggregation_callback_map.min(aggregation_data))
         // struct.aggregation.max.push(aggregation_callback_map.max(aggregation_data))
         // this will apply aggregation function to metric's min and max aggregated values
-        !group.aggregations.min ?
-            console.warn('No aggregation "min" for ', group) :
-            struct.aggregation.min.push(aggregation_callback(group.aggregations.min))
+        !group.aggregations.min &&
+            console.warn('No aggregation "min" for ', group)
+        struct.aggregation.min.push(aggregation_callback(group.aggregations.min))
 
-        !group.aggregations.max ?
-            console.warn('No aggregation "max" for ', group) :
-            struct.aggregation.max.push(aggregation_callback(group.aggregations.max))
+        !group.aggregations.max &&
+            console.warn('No aggregation "max" for ', group)
+        struct.aggregation.max.push(aggregation_callback(group.aggregations.max))
         switch (data_aggregation_type) {
             case 'min':
                 struct.throughput.main = struct.throughput.min
@@ -321,6 +370,8 @@ const dataset_main = (label = '', color = '#5933c6') => ({
     pointHoverBackgroundColor: color,
     pointHoverBorderColor: color,
     fill: false,
+    tension: 0.4,
+    spanGaps: true,
 })
 
 const dataset_max = (label, color) => ({
