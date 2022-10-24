@@ -106,13 +106,10 @@ const process_data_slice = (data_slice, name = undefined) => {
     return struct
 }
 
-const group_data_by_timeline = (tests, number_of_groups) => {
+const group_data_by_timeline = (tests, time_groups) => {
     if (tests.length === 0) {
         return []
     }
-    // we assume that tests are sorted asc by time
-    // we probably need to group tests differently like time stamp + half step and check if it is in range
-    const time_groups = calculate_time_groups(tests.at(0).start_time, tests.at(-1).start_time, number_of_groups)
     let pointers = [0, 0]
 
     /*
@@ -153,7 +150,7 @@ const group_data_by_timeline = (tests, number_of_groups) => {
     const get_time_group_label = time_group => {
         if (time_groups.indexOf(time_group) === 0) {
             return time_group[0]
-        } else if (time_groups.indexOf(time_group) === number_of_groups - 1) {
+        } else if (time_groups.indexOf(time_group) === time_groups.length - 1) {
             return time_group[1]
         } else {
            return new Date(Math.ceil(time_group.reduce((a, b) => a.getTime() + b.getTime()) / time_group.length))

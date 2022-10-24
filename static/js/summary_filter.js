@@ -516,9 +516,17 @@ const SummaryFilter = {
                 || this.selected_metric_ui
         },
         grouped_data_backend() {
-            return this.time_axis_type ?
-                group_data_by_timeline(this.filtered_backend_tests, this.max_test_on_chart) :
-                group_data(this.filtered_backend_tests, this.max_test_on_chart)
+            if (this.time_axis_type) {
+                // we assume that tests are sorted asc by time
+                const time_groups = calculate_time_groups(
+                    this.filtered_backend_tests.at(0).start_time,
+                    this.filtered_backend_tests.at(-1).start_time,
+                    this.max_test_on_chart
+                )
+                return group_data_by_timeline(this.filtered_backend_tests, time_groups)
+            } else {
+                return group_data(this.filtered_backend_tests, this.max_test_on_chart)
+            }
         },
         aggregated_data_backend() {
             return aggregate_data(this.grouped_data_backend, this.selected_aggregation_backend, this.chart_aggregation)
