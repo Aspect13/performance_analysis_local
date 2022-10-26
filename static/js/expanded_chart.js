@@ -12,6 +12,8 @@ const ExpandedChart = {
             split_by_test: false,
             max_test_on_chart: 6,
             time_axis_type: false,
+            tmp1: {},
+            tmp2: {}
         }
     },
     mounted() {
@@ -84,56 +86,86 @@ const ExpandedChart = {
             })
         },
         update_chart_by_test() {
-            const split_by_name_tests = Object.entries(
-                this.filtered_tests.reduce((accum, item) => {
-                    const test_node_name = `${item.name}.${item.test_env}`
-                    if (!accum.hasOwnProperty(test_node_name)) {
-                        accum[test_node_name] = []
-                    }
-                    accum[test_node_name].push(item)
-                    return accum
-                }, {})
-            )
-            const data = split_by_name_tests.reduce((accum, [test_name, test_data]) => {
+            const split_by_name_tests = this.filtered_tests.reduce((accum, item) => {
+                const test_node_name = `${item.name}.${item.test_env}`
+                if (!accum.hasOwnProperty(test_node_name)) {
+                    accum[test_node_name] = []
+                }
+                accum[test_node_name].push(item)
+                return accum
+            }, {})
+
+            this.tmp2 = this.time_groups
+            const data = Object.entries(split_by_name_tests).reduce((accum, [test_name, test_data]) => {
                 let {data, labels} = accum
                 let aggregated_data
                 if (this.time_axis_type) {
                     // we assume that tests are sorted asc by time
-                    const time_groups = calculate_time_groups(
-                        this.filtered_tests.at(0).start_time,
-                        this.filtered_tests.at(-1).start_time,
-                        this.max_test_on_chart
-                    )
-                    // return group_data_by_timeline(this.filtered_backend_tests, time_groups)
-                    aggregated_data = this.get_aggregated_dataset(group_data_by_timeline(test_data, time_groups))
+                    aggregated_data = this.get_aggregated_dataset(group_data_by_timeline(test_data, this.time_groups))
                 } else {
-                    // return group_data(this.filtered_tests, this.max_test_on_chart)
                     aggregated_data = this.get_aggregated_dataset(group_data(test_data, this.max_test_on_chart))
                 }
-                // const aggregated_data = this.get_aggregated_dataset(group_data(test_data, this.max_test_on_chart))
-                const datasets = prepare_datasets(
-                    window.charts.expanded_chart,
-                    aggregated_data.data,
-                    // this.need_grouping(test_data),
-                    true,
-                    `${test_name}:${this.data_node}`,
-                    `${test_name}:min`,
-                    `${test_name}:max`,
-                )
-                data = [...data, ...datasets]
-                labels = new Set([...labels, ...aggregated_data.labels])
-                return {data, labels}
-            }, {data: [], labels: new Set()})
-            data.labels = Array.from(data.labels)
+                labels.push(aggregated_data.labels)
+                // accum = [...accum, ...prepare_datasets(
+                //     window.charts.expanded_chart,
+                //     aggregated_data.data,
+                //     true,
+                //     `${test_name}:${this.data_node}`,
+                //     `${test_name}:min`,
+                //     `${test_name}:max`,
+                // )]
+                return {
+                    data: [...data, ...prepare_datasets(
+                        window.charts.expanded_chart,
+                        aggregated_data.data,
+                        true,
+                        `${test_name}:${this.data_node}`,
+                        `${test_name}:min`,
+                        `${test_name}:max`,
+                    )], labels
+                }
+            }, {data: [], labels: []})
+            // const data = Object.entries(split_by_name_tests).reduce((accum, [test_name, test_data]) => {
+            //     let {data, labels} = accum
+            //     let aggregated_data
+            //     if (this.time_axis_type) {
+            //         // we assume that tests are sorted asc by time
+            //
+            //         // return group_data_by_timeline(this.filtered_backend_tests, time_groups)
+            //         aggregated_data = this.get_aggregated_dataset(group_data_by_timeline(test_data, this.time_groups))
+            //     } else {
+            //         // return group_data(this.filtered_tests, this.max_test_on_chart)
+            //         aggregated_data = this.get_aggregated_dataset(group_data(test_data, this.max_test_on_chart))
+            //     }
+            //
+            //     // const aggregated_data = this.get_aggregated_dataset(group_data(test_data, this.max_test_on_chart))
+            //     const new_datasets = prepare_datasets(
+            //         window.charts.expanded_chart,
+            //         aggregated_data.data,
+            //         // this.need_grouping(test_data),
+            //         true,
+            //         `${test_name}:${this.data_node}`,
+            //         `${test_name}:min`,
+            //         `${test_name}:max`,
+            //     )
+            //     data = [...data, ...new_datasets]
+            //     labels = new Set([...labels, ...aggregated_data.labels])
+            //     return {data, labels}
+            // }, {data: [], labels: new Set()})
+            // data.labels = Array.from(data.labels)
+
             // const data = prepare_datasets(
             //     window.charts.expanded_chart,
             //     this.aggregated_data.data,
             //     this.tests_need_grouping,
             //     `metric[${this.data_node}]`
             // )
+            this.tmp1 = data.labels
             update_chart(window.charts.expanded_chart, {
                 datasets: data.data,
-                labels: data.labels
+                // labels: data.labels[0]
+                labels: this.time_axis_type ?
+                    data.labels[0] : [...Array(this.max_test_on_chart)].map((_, i) => `group ${i + 1}`)
             }, {
                 // tooltip: get_tooltip_options(
                 //     this.aggregated_data.aggregated_tests,
@@ -173,12 +205,10 @@ const ExpandedChart = {
                 } else if (group.aggregations.hasOwnProperty(this.data_node)) {
                     // for aggregated metrics
                     dataset = group.aggregations[this.data_node]
-                    !group.aggregations.min &&
-                    console.warn('No aggregation "min" for ', group)
+                    // !group.aggregations.min && console.warn('No aggregation "min" for ', group)
                     struct.data.min.push(this.aggregation_callback(group.aggregations.min))
 
-                    !group.aggregations.max &&
-                    console.warn('No aggregation "max" for ', group)
+                    // !group.aggregations.max && console.warn('No aggregation "max" for ', group)
                     struct.data.max.push(this.aggregation_callback(group.aggregations.max))
                     // !group.aggregations.min ?
                     //     console.warn('No aggregation "min" for ', group) :
@@ -187,6 +217,9 @@ const ExpandedChart = {
                     //     console.warn('No aggregation "max" for ', group) :
                     //     struct.data.max.push(this.aggregation_callback(group.aggregations.max))
                 } else {
+                    dataset = null
+                    struct.data.min.push(null)
+                    struct.data.max.push(null)
                     console.warn('No data "', this.data_node, '" in ', group)
                     // return
                 }
@@ -229,6 +262,13 @@ const ExpandedChart = {
         },
         tests_need_grouping() {
             return this.need_grouping(this.filtered_tests)
+        },
+        time_groups() {
+            return calculate_time_groups(
+                this.filtered_tests.at(0).start_time,
+                this.filtered_tests.at(-1).start_time,
+                this.max_test_on_chart
+            )
         }
     },
     template: `
@@ -244,7 +284,8 @@ const ExpandedChart = {
                 </button>
             </div>
             <div class="modal-body">
-            <pre>[[ aggregated_data ]]</pre>
+            <pre><button @click="tmp1 = {}">X</button>[[ tmp1 ]]</pre>
+            <pre><button @click="tmp2 = {}">X</button>[[ tmp2 ]]</pre>
 <!--                <p>Modal body text goes here.</p>-->
 <!--filtered_tests: [[ filtered_tests ]]-->
 <div class="d-flex align-items-center">

@@ -134,12 +134,13 @@ class RPC:
             BackendAnalysisModel.parse_obj(dict(zip(columns.keys(), i)))
             for i in query.all()
         )
-        return list(map(lambda i: i.dict(exclude={'total', 'failures'}), result))
-        # r = []
-        # for i in r:
-        #     for _ in range(100):
-        #         r.append(i)
-        # return r
+        rr = list(map(lambda i: i.dict(exclude={'total', 'failures'}), result))
+        return rr
+        r = []
+        for i in rr:
+            for _ in range(100):
+                r.append(i)
+        return r
 
     @web.rpc('performance_analysis_test_runs_ui_performance')
     @rpc_tools.wrap_exceptions(RuntimeError)

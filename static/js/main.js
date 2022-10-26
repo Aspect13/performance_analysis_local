@@ -471,7 +471,11 @@ const get_common_chart_options = () => ({
                         switch (this.type) {
                             case 'category':
                                 // return this.getLabelForValue(value)
-                                return new Date(this.getLabelForValue(value)).toLocaleDateString()
+                                // const is_date = !isNaN(Date.parse(this.getLabelForValue(value)))
+                                const label = this.getLabelForValue(value)
+                                const is_date = !isNaN(Date.parse(label)) && !label.startsWith('group')
+                                return is_date ?
+                                    new Date(label).toLocaleDateString() : label
                             // return new Date(this.getLabelForValue(value)).toLocaleDateString(undefined,
                             //     {day: '2-digit', month: '2-digit'})
                             case 'time':

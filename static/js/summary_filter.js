@@ -343,7 +343,8 @@ const SummaryFilter = {
                 ),
                 title: {
                     display: true,
-                    text: `RESPONSE TIME - ${this.selected_aggregation_backend}`
+                    text: `RESPONSE TIME - ${this.selected_aggregation_backend}`,
+                    align: 'start',
                 }
             })
         },
@@ -369,7 +370,10 @@ const SummaryFilter = {
                 datasets: datasets,
                 labels: this.filtered_ui_tests.map(i => i.start_time),
             }
-            window.charts.page_speed.options.plugins.title.text = `PAGE SPEED - ${this.selected_metric_ui_mapped} - ${this.selected_aggregation_ui_mapped}`
+            // const title_opts = get_common_chart_options().options.plugins.title
+            // title_opts.text = `PAGE SPEED - ${this.selected_metric_ui_mapped} - ${this.selected_aggregation_ui_mapped}`
+            // window.charts.page_speed.options.plugins.title = title_opts
+            window.charts.page_speed.options.plugins.title = `PAGE SPEED - ${this.selected_metric_ui_mapped} - ${this.selected_aggregation_ui_mapped}`
             // window.charts.page_speed.options.plugins.subtitle = {
             //     display: true,
             //     text: `${this.selected_metric_ui_mapped} : ${this.selected_aggregation_ui_mapped}`,
@@ -545,36 +549,36 @@ const SummaryFilter = {
     },
     template: `
 <div>
-    <div class="d-flex" style="background-color: #80808080">
-            <div class="d-flex flex-grow-1">
-                DEBUG || 
-                is_loading: [[ is_loading ]] || 
-                selected_filters: [[ selected_filters ]] ||
-                expanded_chart: [[ expanded_chart.show ]] [[ expanded_chart.title ]] [[ expanded_chart.data_node ]]
-            </div>
-            <div class="d-flex flex-grow-1">
-                <label>
-                    Max tests on chart
-                    <input type="number" v-model="max_test_on_chart" @change="handle_update_charts" class="form-control">
-                </label>
-            </div>
-    </div>
-    <div class="d-flex" style="background-color: #80808080">
-        <div class="d-flex flex-grow-1">
-            time groups: <pre>[[ tmp ]]</pre>
-        </div>
-        <div class="d-flex flex-grow-1">
-            tests times: <pre>[[ filtered_backend_tests.map(i => new Date(i.start_time).toLocaleString()) ]]</pre>
-        </div>
-    </div>
-    <div class="d-flex" style="background-color: #80808080">
-        <div class="d-flex flex-grow-1">
-            <pre>[[ grouped_data_backend ]]</pre>
-        </div>
-        <div class="d-flex flex-grow-1">
-            <pre>[[ aggregated_data_backend ]]</pre>
-        </div>
-    </div>
+<!--    <div class="d-flex" style="background-color: #80808080">-->
+<!--            <div class="d-flex flex-grow-1">-->
+<!--                DEBUG || -->
+<!--                is_loading: [[ is_loading ]] || -->
+<!--                selected_filters: [[ selected_filters ]] ||-->
+<!--                expanded_chart: [[ expanded_chart.show ]] [[ expanded_chart.title ]] [[ expanded_chart.data_node ]]-->
+<!--            </div>-->
+<!--            <div class="d-flex flex-grow-1">-->
+<!--                <label>-->
+<!--                    Max tests on chart-->
+<!--                    <input type="number" v-model="max_test_on_chart" @change="handle_update_charts" class="form-control">-->
+<!--                </label>-->
+<!--            </div>-->
+<!--    </div>-->
+<!--    <div class="d-flex" style="background-color: #80808080">-->
+<!--        <div class="d-flex flex-grow-1">-->
+<!--            time groups: <pre>[[ tmp ]]</pre>-->
+<!--        </div>-->
+<!--        <div class="d-flex flex-grow-1">-->
+<!--            tests times: <pre>[[ filtered_backend_tests.map(i => new Date(i.start_time).toLocaleString()) ]]</pre>-->
+<!--        </div>-->
+<!--    </div>-->
+<!--    <div class="d-flex" style="background-color: #80808080">-->
+<!--        <div class="d-flex flex-grow-1">-->
+<!--            <pre>[[ grouped_data_backend ]]</pre>-->
+<!--        </div>-->
+<!--        <div class="d-flex flex-grow-1">-->
+<!--            <pre>[[ aggregated_data_backend ]]</pre>-->
+<!--        </div>-->
+<!--    </div>-->
     
     <div class="d-flex flex-wrap filter-container">
 <!--        <div class="d-flex justify-content-between flex-grow-1">-->
@@ -722,6 +726,12 @@ const SummaryFilter = {
     ></ColorfulCards>
     
     <div class="selectpicker-titled mt-3 d-inline-flex">
+        <div class="d-flex flex-grow-1">
+            <label>
+                Max tests on chart
+                <input type="number" v-model="max_test_on_chart" @change="handle_update_charts" class="form-control">
+            </label>
+        </div>
         <span class="font-h6 font-semibold px-3 item__left text-uppercase">chart aggregation</span>
         <select class="selectpicker flex-grow-1" data-style="item__right"
             v-model="chart_aggregation"
