@@ -581,8 +581,6 @@ const SummaryFilter = {
 <!--    </div>-->
     
     <div class="d-flex flex-wrap filter-container">
-<!--        <div class="d-flex justify-content-between flex-grow-1">-->
-
             <div class="selectpicker-titled">
                 <span class="font-h6 font-semibold px-3 item__left text-uppercase">group</span>
                 <select class="selectpicker flex-grow-1" data-style="item__right"
@@ -701,7 +699,6 @@ const SummaryFilter = {
                     <option value="last_week">Last Week</option>
                 </select>
             </div>
-<!--        </div>-->
 
         <MultiselectDropdown
             variant="slot"
@@ -726,35 +723,39 @@ const SummaryFilter = {
     ></ColorfulCards>
     
     <div class="selectpicker-titled mt-3 d-inline-flex">
-        <div class="d-flex flex-grow-1">
-            <label>
-                Max tests on chart
+            <label class="d-inline-flex flex-column">
+                Max points on chart
                 <input type="number" v-model="max_test_on_chart" @change="handle_update_charts" class="form-control">
             </label>
-        </div>
-        <span class="font-h6 font-semibold px-3 item__left text-uppercase">chart aggregation</span>
-        <select class="selectpicker flex-grow-1" data-style="item__right"
-            v-model="chart_aggregation"
-        >
-            <option value="min">min</option>
-            <option value="max">max</option>
-            <option value="mean">mean</option>
-            <option value="pct50">50 pct</option>
-            <option value="pct75">75 pct</option>
-            <option value="pct90">90 pct</option>
-            <option value="pct95">95 pct</option>
-            <option value="pct99">99 pct</option>
-        </select>
+            <label class="d-inline-flex flex-column">
+                Chart aggregation
+                <select class="selectpicker"
+                    v-model="chart_aggregation"
+                >
+                    <option value="min">min</option>
+                    <option value="max">max</option>
+                    <option value="mean">mean</option>
+                    <option value="pct50">50 pct</option>
+                    <option value="pct75">75 pct</option>
+                    <option value="pct90">90 pct</option>
+                    <option value="pct95">95 pct</option>
+                    <option value="pct99">99 pct</option>
+                </select>
+            </label>
+            <label class="d-inline-flex flex-column">
+                Axis type
+                <div class="d-inline-flex filter-container align-items-center">
+                    <span>categorical</span>
+                        <label class="custom-toggle mt-0">
+                            <input type="checkbox" v-model="time_axis_type">
+                            <span class="custom-toggle_slider round"></span>
+                        </label>
+                    <span>time</span>
+                </div>
+            </label>
     </div>
     
-    <div class="d-inline-flex filter-container align-items-center">
-        <span>categorical axis</span>
-        <label class="custom-toggle mt-0">
-            <input type="checkbox" v-model="time_axis_type">
-            <span class="custom-toggle_slider round"></span>
-        </label>
-        <span>time axis</span>
-    </div>
+    
 
     <expanded-chart
         modal_id="expanded_chart_backdrop"
