@@ -63,13 +63,13 @@ class Module(module.ModuleModel):
             weight=4,
         )
 
-        # theme.register_page(
-        #     "performance", "analysis",
-        #     "results",
-        #     title="UI Test Results",
-        #     kind="slot",
-        #     prefix="ui_results_",
-        # )
+        theme.register_page(
+            "performance", "analysis",
+            "compare",
+            title="UI Test Results",
+            kind="slot",
+            prefix="performance_analysis_compare_",
+        )
         self.descriptor.init_rpcs()
         self.descriptor.init_api()
         self.descriptor.init_slots()

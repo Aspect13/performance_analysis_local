@@ -75,32 +75,16 @@ const ColorfulCards = {
     `
 }
 
-const SummaryFilter = {
+const ChartSection = {
+    props: ['tests', 'selected_aggregation_backend', 'selected_aggregation_ui'],
     delimiters: ['[[', ']]'],
     components: {
-        ColorfulCards: ColorfulCards,
+        ExpandedChart: ExpandedChart
     },
+
     data() {
         return {
-            all_data: [],
-            is_loading: false,
-            groups: [],
-            selected_groups: [],
-            tests: [],
-            selected_tests: [],
-            test_types: [],
-            selected_test_types: [],
-            test_envs: [],
-            selected_test_envs: [],
-            selected_aggregation_backend: 'pct95',
-            aggregation_backend_name_map: {},
-            selected_aggregation_ui: 'mean',
-            selected_metric_ui: 'total',
-            aggregation_ui_name_map: {},
-            start_time: 'last_month',
-            end_time: undefined,
             chart_aggregation: 'mean',
-            selected_filters: [],
             max_test_on_chart: 6,
             expanded_chart: {
                 show: false,
@@ -108,160 +92,90 @@ const SummaryFilter = {
                 data_node: '',
                 title: ''
             },
-            // show_expanded_chart: false,
-            // expanded_chart_data: [],
-            // expanded_chart_data_node: '',
             time_axis_type: false,
         }
     },
-    async mounted() {
-        await this.fetch_data()
-        window.tst = this // todo: temp for tests. REMOVE
-    },
     watch: {
-        all_data(newValue) {
-            this.groups = Array.from(newValue.reduce((accum, item) => accum.add(item.group), new Set()))
-            // change selected group dropdown
-            this.selected_groups = newValue.length > 0 ? ['all'] : []
-
-            this.$nextTick(this.refresh_pickers)
-        },
-        selected_groups(newValue, oldValue) {
-            // handle select all
-            if (newValue.includes('all') && !oldValue.includes('all')) {
-                this.selected_groups = ['all']
-                return
-            } else if (newValue.includes('all') && newValue.length > 1) {
-                newValue.splice(newValue.indexOf('all'), 1)
-            }
-            this.tests = Array.from(this.all_data.reduce((accum, item) => {
-                (newValue.includes('all') || newValue.includes(item.group)) &&
-                accum.add(`${item.group.slice(0, 2)}${page_constants.test_name_delimiter}${item.name}`)
-                return accum
-            }, new Set()))
-
-            this.handle_filter_changed()
-        },
-        tests(newValue) {
-            // change selected test dropdown
-            this.selected_tests = newValue.length > 0 ? ['all'] : []
-            this.$nextTick(this.refresh_pickers)
-        },
-        selected_tests(newValue, oldValue) {
-            // handle select all
-            if (newValue.includes('all') && !oldValue.includes('all')) {
-                this.selected_tests = ['all']
-                return
-            } else if (newValue.includes('all') && newValue.length > 1) {
-                newValue.splice(newValue.indexOf('all'), 1)
-            }
-            const test_types = new Set()
-            const test_envs = new Set()
-            this.all_data.map(item => {
-                if (
-                    (this.selected_groups.includes(item.group) || this.selected_groups.includes('all'))
-                    &&
-                    (this.selected_tests_names.includes(item.name) || this.selected_tests_names.includes('all'))
-                ) {
-                    test_types.add(item.test_type)
-                    test_envs.add(item.test_env)
-                }
-            })
-            this.test_types = Array.from(test_types)
-            this.test_envs = Array.from(test_envs)
-            this.handle_filter_changed()
-        },
-        test_types(newValue) {
-            // change test_types dropdown
-            this.selected_test_types = newValue.length > 0 ? ['all'] : []
-            this.$nextTick(this.refresh_pickers)
-        },
-        test_envs(newValue) {
-            // change test_envs dropdown
-            this.selected_test_envs = newValue.length > 0 ? ['all'] : []
-            this.$nextTick(this.refresh_pickers)
-        },
-        selected_test_types(newValue, oldValue) {
-            // handle select all
-            if (newValue.includes('all') && !oldValue.includes('all')) {
-                this.selected_test_types = ['all']
-                return
-            } else if (newValue.includes('all') && newValue.length > 1) {
-                newValue.splice(newValue.indexOf('all'), 1)
-            }
-            this.$nextTick(this.refresh_pickers)
-            this.handle_filter_changed()
-        },
-        selected_test_envs(newValue, oldValue) {
-            // handle select all
-            if (newValue.includes('all') && !oldValue.includes('all')) {
-                this.selected_test_envs = ['all']
-                return
-            } else if (newValue.includes('all') && newValue.length > 1) {
-                newValue.splice(newValue.indexOf('all'), 1)
-            }
-            this.$nextTick(this.refresh_pickers)
-            this.handle_filter_changed()
-        },
-        async start_time(newValue) {
-            await this.fetch_data()
-        },
-        selected_aggregation_backend() {
-            this.handle_update_backend_charts()
-        },
-        selected_aggregation_ui() {
-            this.handle_update_ui_charts()
-        },
-        selected_metric_ui() {
-            this.handle_update_ui_charts()
-        },
         chart_aggregation() {
             this.handle_update_charts()
         },
         time_axis_type(newValue) {
             Object.values(window.charts).forEach(i => {
                 i.options.scales.x.type = newValue ? 'time' : 'category'
-                // i.update()
             })
             this.handle_update_charts()
+        },
+    },
+    computed: {
+        filtered_backend_tests() {
+            return this.tests.filter(
+                i => i.group === page_constants.backend_name
+            )
+        },
+        filtered_ui_tests() {
+            return this.tests.filter(
+                i => i.group === page_constants.ui_name
+            )
+        },
+        grouped_data_backend() {
+            if (this.time_axis_type) {
+                // we assume that tests are sorted asc by time
+                const time_groups = calculate_time_groups(
+                    this.filtered_backend_tests.at(0).start_time,
+                    this.filtered_backend_tests.at(-1).start_time,
+                    this.max_test_on_chart
+                )
+                return group_data_by_timeline(this.filtered_backend_tests, time_groups)
+            } else {
+                return group_data(this.filtered_backend_tests, this.max_test_on_chart)
+            }
+        },
+        aggregated_data_backend() {
+            return aggregate_data(this.grouped_data_backend, this.selected_aggregation_backend, this.chart_aggregation)
+        },
+        backend_tests_need_grouping() {
+            return this.filtered_backend_tests.length > this.max_test_on_chart || this.time_axis_type
         },
     },
     methods: {
         refresh_pickers() {
             $(this.$el).find('.selectpicker').selectpicker('redner').selectpicker('refresh')
         },
-        async fetch_data() {
-            this.is_loading = true
-            const resp = await fetch(
-                api_base + '/performance_analysis/filter/' + getSelectedProjectId() + '?' + new URLSearchParams(
-                    this.timeframe
-                )
-            )
-            if (resp.ok) {
-                this.all_data = await resp.json()
-                this.all_data.push({
-                    metrics: {
-                        total: {
-                            mean: 123,
-                        }
-                    },
-                    "duration": 95,
-                    "group": page_constants.ui_name,
-                    "name": "mocked_ui_test",
-                    "start_time": "2022-08-19T09:04:52.479000Z",
-                    "status": "Finished",
-                    "tags": ['some_tag_1', 'some_tag_2'],
-                    "test_env": "mocked_1",
-                    "test_type": "mocked_1",
-
-                }) // todo: remove
+        handle_expand_chart(event) {
+            const chart_name = event.target.tagName === 'I' ?
+                event.target.parentElement.dataset.chart_name :
+                event.target.dataset.chart_name
+            const chart = window.charts[chart_name]
+            if (chart) {
+                // Object.assign(window.charts.expanded_chart.options, chart.config.options)
+                // window.charts.expanded_chart.options.plugins.title.text = chart.config.options.plugins.title.text
+                this.expanded_chart.title = chart.config.options.plugins.title.text
+                // window.charts.expanded_chart.options.plugins.tooltip = chart.config.options.plugins.tooltip
+                // Object.assign(window.charts.expanded_chart.data, chart.config.data)
+                // window.charts.expanded_chart.options.scales.x.ticks.maxTicksLimit = 11
+                // const group = ['throughput', 'error_rate', ''].includes(chart_name) ?
+                //     page_constants.backend_name : page_constants.ui_name
+                // this.expanded_chart_data = this.filtered_tests.filter(i => {
+                //     return i.group === group &&
+                // })
+                if (chart_name === 'page_speed') {
+                    // this.expanded_chart_data = this.filtered_ui_tests
+                    // this.expanded_chart_data_node = chart_name
+                    this.expanded_chart.data = this.filtered_ui_tests
+                    this.expanded_chart.data_node = chart_name
+                } else {
+                    // this.expanded_chart_data = this.filtered_backend_tests
+                    // this.expanded_chart_data_node = chart_name === 'response_time' ? this.selected_aggregation_backend : chart_name
+                    this.expanded_chart.data = this.filtered_backend_tests
+                    this.expanded_chart.data_node = chart_name === 'response_time' ?
+                        this.selected_aggregation_backend : chart_name
+                }
+                this.expanded_chart.show = true
+                // window.charts.expanded_chart.update()
+                // $('#expanded_chart_backdrop').modal('show')
             } else {
-                showNotify('ERROR', 'Error fetching groups')
+                showNotify('ERROR', `No chart named ${chart_name} found`)
             }
-            this.is_loading = false
-        },
-        handle_apply_click() {
-            this.handle_filter_changed()
         },
         handle_update_backend_charts() {
             const throughput_datasets = prepare_datasets(
@@ -389,46 +303,271 @@ const SummaryFilter = {
             this.handle_update_backend_charts()
             this.handle_update_ui_charts()
         },
+    },
+    template: `
+<div>
+    <div class="selectpicker-titled mt-3 d-inline-flex">
+        <label class="d-inline-flex flex-column">
+            Max points on chart
+            <input type="number" v-model="max_test_on_chart" @change="handle_update_charts" class="form-control">
+        </label>
+        <label class="d-inline-flex flex-column">
+            Chart aggregation
+            <select class="selectpicker"
+                v-model="chart_aggregation"
+            >
+                <option value="min">min</option>
+                <option value="max">max</option>
+                <option value="mean">mean</option>
+                <option value="pct50">50 pct</option>
+                <option value="pct75">75 pct</option>
+                <option value="pct90">90 pct</option>
+                <option value="pct95">95 pct</option>
+                <option value="pct99">99 pct</option>
+            </select>
+        </label>
+        <label class="d-inline-flex flex-column">
+            Axis type
+            <div class="d-inline-flex filter-container align-items-center">
+                <span>categorical</span>
+                    <label class="custom-toggle mt-0">
+                        <input type="checkbox" v-model="time_axis_type">
+                        <span class="custom-toggle_slider round"></span>
+                    </label>
+                <span>time</span>
+            </div>
+        </label>
+    </div>
+    
+    <div class="d-flex justify-content-between my-3">
+        <div class="chart-container">
+            <button type="button" class="btn btn-secondary btn-sm btn-icon__sm"
+                    data-chart_name="throughput"
+                    @click="registered_components.summary_filter?.handle_expand_chart"
+            >
+                <i class="fa fa-magnifying-glass-plus"></i>
+            </button>
+            <canvas id="throughput_chart"></canvas>
+        </div>
+        <div class="chart-container">
+            <button type="button" class="btn btn-secondary btn-sm btn-icon__sm"
+                    data-chart_name="error_rate"
+                    @click="registered_components.summary_filter?.handle_expand_chart"
+            >
+                <i class="fa fa-magnifying-glass-plus"></i>
+            </button>
+            <canvas id="error_rate_chart"></canvas>
+        </div>
+        <div class="chart-container">
+            <button type="button" class="btn btn-secondary btn-sm btn-icon__sm"
+                    data-chart_name="response_time"
+                    @click="registered_components.summary_filter?.handle_expand_chart"
+            >
+                <i class="fa fa-magnifying-glass-plus"></i>
+            </button>
+            <canvas id="response_time_chart"></canvas>
+        </div>
+        <div class="chart-container">
+            <button type="button" class="btn btn-secondary btn-sm btn-icon__sm"
+                    data-chart_name="page_speed"
+                    @click="registered_components.summary_filter?.handle_expand_chart"
+            >
+                <i class="fa fa-magnifying-glass-plus"></i>
+            </button>
+            <canvas id="page_speed_chart"></canvas>
+        </div>
+    </div>
+    
+    <ExpandedChart
+        modal_id="expanded_chart_backdrop"
+        :filtered_tests="expanded_chart.data"
+        v-model:show="expanded_chart.show"
+        :initial_max_test_on_chart="max_test_on_chart"
+        :initial_chart_aggregation="chart_aggregation"
+        :initial_time_axis_type="time_axis_type"
+        :data_node="expanded_chart.data_node"
+        :title="expanded_chart.title"
+    ></ExpandedChart>
+</div>
+    `
+}
+
+
+const aggregation_backend_name_map = {}
+const aggregation_ui_name_map = {}
+
+const SummaryFilter = {
+    delimiters: ['[[', ']]'],
+    components: {
+        ColorfulCards: ColorfulCards,
+        ChartSection: ChartSection,
+    },
+    data() {
+        return {
+            all_data: [],
+            is_loading: false,
+            groups: [],
+            selected_groups: [],
+            tests: [],
+            selected_tests: [],
+            test_types: [],
+            selected_test_types: [],
+            test_envs: [],
+            selected_test_envs: [],
+            selected_aggregation_backend: 'pct95',
+            selected_aggregation_ui: 'mean',
+            selected_metric_ui: 'total',
+            start_time: 'last_month',
+            end_time: undefined,
+            selected_filters: [],
+        }
+    },
+    async mounted() {
+        await this.fetch_data()
+        window.tst = this // todo: temp for tests. REMOVE
+    },
+    watch: {
+        all_data(newValue) {
+            this.groups = Array.from(newValue.reduce((accum, item) => accum.add(item.group), new Set()))
+            // change selected group dropdown
+            this.selected_groups = newValue.length > 0 ? ['all'] : []
+
+            this.$nextTick(this.refresh_pickers)
+        },
+        selected_groups(newValue, oldValue) {
+            // handle select all
+            if (newValue.includes('all') && !oldValue.includes('all')) {
+                this.selected_groups = ['all']
+                return
+            } else if (newValue.includes('all') && newValue.length > 1) {
+                newValue.splice(newValue.indexOf('all'), 1)
+            }
+            this.tests = Array.from(this.all_data.reduce((accum, item) => {
+                (newValue.includes('all') || newValue.includes(item.group)) &&
+                accum.add(`${item.group.slice(0, 2)}${page_constants.test_name_delimiter}${item.name}`)
+                return accum
+            }, new Set()))
+
+            this.handle_filter_changed()
+        },
+        tests(newValue) {
+            // change selected test dropdown
+            this.selected_tests = newValue.length > 0 ? ['all'] : []
+            this.$nextTick(this.refresh_pickers)
+        },
+        selected_tests(newValue, oldValue) {
+            // handle select all
+            if (newValue.includes('all') && !oldValue.includes('all')) {
+                this.selected_tests = ['all']
+                return
+            } else if (newValue.includes('all') && newValue.length > 1) {
+                newValue.splice(newValue.indexOf('all'), 1)
+            }
+            const test_types = new Set()
+            const test_envs = new Set()
+            this.all_data.map(item => {
+                if (
+                    (this.selected_groups.includes(item.group) || this.selected_groups.includes('all'))
+                    &&
+                    (this.selected_tests_names.includes(item.name) || this.selected_tests_names.includes('all'))
+                ) {
+                    test_types.add(item.test_type)
+                    test_envs.add(item.test_env)
+                }
+            })
+            this.test_types = Array.from(test_types)
+            this.test_envs = Array.from(test_envs)
+            this.handle_filter_changed()
+        },
+        test_types(newValue) {
+            // change test_types dropdown
+            this.selected_test_types = newValue.length > 0 ? ['all'] : []
+            this.$nextTick(this.refresh_pickers)
+        },
+        test_envs(newValue) {
+            // change test_envs dropdown
+            this.selected_test_envs = newValue.length > 0 ? ['all'] : []
+            this.$nextTick(this.refresh_pickers)
+        },
+        selected_test_types(newValue, oldValue) {
+            // handle select all
+            if (newValue.includes('all') && !oldValue.includes('all')) {
+                this.selected_test_types = ['all']
+                return
+            } else if (newValue.includes('all') && newValue.length > 1) {
+                newValue.splice(newValue.indexOf('all'), 1)
+            }
+            this.$nextTick(this.refresh_pickers)
+            this.handle_filter_changed()
+        },
+        selected_test_envs(newValue, oldValue) {
+            // handle select all
+            if (newValue.includes('all') && !oldValue.includes('all')) {
+                this.selected_test_envs = ['all']
+                return
+            } else if (newValue.includes('all') && newValue.length > 1) {
+                newValue.splice(newValue.indexOf('all'), 1)
+            }
+            this.$nextTick(this.refresh_pickers)
+            this.handle_filter_changed()
+        },
+        async start_time(newValue) {
+            await this.fetch_data()
+        },
+        selected_aggregation_backend() {
+            this.handle_update_backend_charts()
+        },
+        selected_aggregation_ui() {
+            this.handle_update_ui_charts()
+        },
+        selected_metric_ui() {
+            this.handle_update_ui_charts()
+        },
+
+    },
+    methods: {
+        refresh_pickers() {
+            $(this.$el).find('.selectpicker').selectpicker('redner').selectpicker('refresh')
+        },
+        async fetch_data() {
+            this.is_loading = true
+            const resp = await fetch(
+                api_base + '/performance_analysis/filter/' + getSelectedProjectId() + '?' + new URLSearchParams(
+                    this.timeframe
+                )
+            )
+            if (resp.ok) {
+                this.all_data = await resp.json()
+                this.all_data.push({
+                    metrics: {
+                        total: {
+                            mean: 123,
+                        }
+                    },
+                    "duration": 95,
+                    "group": page_constants.ui_name,
+                    "name": "mocked_ui_test",
+                    "start_time": "2022-08-19T09:04:52.479000Z",
+                    "status": "Finished",
+                    "tags": ['some_tag_1', 'some_tag_2'],
+                    "test_env": "mocked_1",
+                    "test_type": "mocked_1",
+
+                }) // todo: remove
+            } else {
+                showNotify('ERROR', 'Error fetching groups')
+            }
+            this.is_loading = false
+        },
+        handle_apply_click() {
+            this.handle_filter_changed()
+        },
+
         handle_filter_changed() {
             vueVm.registered_components.table_reports?.table_action('load', this.filtered_tests)
-            this.handle_update_charts()
+            // this.handle_update_charts()
         },
-        handle_expand_chart(event) {
-            const chart_name = event.target.tagName === 'I' ?
-                event.target.parentElement.dataset.chart_name :
-                event.target.dataset.chart_name
-            const chart = window.charts[chart_name]
-            if (chart) {
-                // Object.assign(window.charts.expanded_chart.options, chart.config.options)
-                // window.charts.expanded_chart.options.plugins.title.text = chart.config.options.plugins.title.text
-                this.expanded_chart.title = chart.config.options.plugins.title.text
-                // window.charts.expanded_chart.options.plugins.tooltip = chart.config.options.plugins.tooltip
-                // Object.assign(window.charts.expanded_chart.data, chart.config.data)
-                // window.charts.expanded_chart.options.scales.x.ticks.maxTicksLimit = 11
-                // const group = ['throughput', 'error_rate', ''].includes(chart_name) ?
-                //     page_constants.backend_name : page_constants.ui_name
-                // this.expanded_chart_data = this.filtered_tests.filter(i => {
-                //     return i.group === group &&
-                // })
-                if (chart_name === 'page_speed') {
-                    // this.expanded_chart_data = this.filtered_ui_tests
-                    // this.expanded_chart_data_node = chart_name
-                    this.expanded_chart.data = this.filtered_ui_tests
-                    this.expanded_chart.data_node = chart_name
-                } else {
-                    // this.expanded_chart_data = this.filtered_backend_tests
-                    // this.expanded_chart_data_node = chart_name === 'response_time' ? this.selected_aggregation_backend : chart_name
-                    this.expanded_chart.data = this.filtered_backend_tests
-                    this.expanded_chart.data_node = chart_name === 'response_time' ?
-                        this.selected_aggregation_backend : chart_name
-                }
-                this.expanded_chart.show = true
-                // window.charts.expanded_chart.update()
-                // $('#expanded_chart_backdrop').modal('show')
-            } else {
-                showNotify('ERROR', `No chart named ${chart_name} found`)
-            }
-        }
+
     },
     computed: {
         backend_test_selected() {
@@ -455,16 +594,7 @@ const SummaryFilter = {
                     (this.selected_test_envs.includes('all') || this.selected_test_envs.includes(i.test_env))
             })
         },
-        filtered_backend_tests() {
-            return this.filtered_tests.filter(
-                i => i.group === page_constants.backend_name
-            )
-        },
-        filtered_ui_tests() {
-            return this.filtered_tests.filter(
-                i => i.group === page_constants.ui_name
-            )
-        },
+
         timeframe() {
             switch (this.start_time) {
                 // todo: place real date frames here
@@ -508,44 +638,26 @@ const SummaryFilter = {
             })
         },
         selected_aggregation_backend_mapped() {
-            return this.aggregation_backend_name_map[this.selected_aggregation_backend]
+            return aggregation_backend_name_map[this.selected_aggregation_backend]
                 || this.selected_aggregation_backend
         },
         selected_aggregation_ui_mapped() {
-            return this.aggregation_ui_name_map[this.selected_aggregation_ui]
+            return aggregation_ui_name_map[this.selected_aggregation_ui]
                 || this.selected_aggregation_ui
         },
         selected_metric_ui_mapped() {
-            return this.aggregation_ui_name_map[this.selected_metric_ui]
+            return aggregation_ui_name_map[this.selected_metric_ui]
                 || this.selected_metric_ui
         },
-        grouped_data_backend() {
-            if (this.time_axis_type) {
-                // we assume that tests are sorted asc by time
-                const time_groups = calculate_time_groups(
-                    this.filtered_backend_tests.at(0).start_time,
-                    this.filtered_backend_tests.at(-1).start_time,
-                    this.max_test_on_chart
-                )
-                return group_data_by_timeline(this.filtered_backend_tests, time_groups)
-            } else {
-                return group_data(this.filtered_backend_tests, this.max_test_on_chart)
-            }
-        },
-        aggregated_data_backend() {
-            return aggregate_data(this.grouped_data_backend, this.selected_aggregation_backend, this.chart_aggregation)
-        },
-        backend_tests_need_grouping() {
-            return this.filtered_backend_tests.length > this.max_test_on_chart || this.time_axis_type
-        },
-        tmp() {
-            return this.filtered_backend_tests.length > 0 && calculate_time_groups(
-                this.filtered_backend_tests.at(0).start_time,
-                this.filtered_backend_tests.at(-1).start_time,
-                this.max_test_on_chart,
-                false
-                ).map(i => i.toLocaleString())
-        }
+
+        // tmp() {
+        //     return this.filtered_backend_tests.length > 0 && calculate_time_groups(
+        //         this.filtered_backend_tests.at(0).start_time,
+        //         this.filtered_backend_tests.at(-1).start_time,
+        //         this.max_test_on_chart,
+        //         false
+        //         ).map(i => i.toLocaleString())
+        // }
     },
     template: `
 <div>
@@ -581,124 +693,124 @@ const SummaryFilter = {
 <!--    </div>-->
     
     <div class="d-flex flex-wrap filter-container">
-            <div class="selectpicker-titled">
-                <span class="font-h6 font-semibold px-3 item__left text-uppercase">group</span>
-                <select class="selectpicker flex-grow-1" data-style="item__right"
-                    multiple
-                    v-model="selected_groups"
-                >
-                    <option value="all" v-if="groups.length > 0">All</option>
-                    <option v-for="i in groups" :value="i" :key="i">[[ i ]]</option>
-                </select>
-            </div>
-
-            <div class="selectpicker-titled">
-                <span class="font-h6 font-semibold px-3 item__left text-uppercase">test</span>
-                <select class="selectpicker flex-grow-1" data-style="item__right"
-                    multiple
-                    :disabled="tests.length === 0"
-                    v-model="selected_tests"
-                >
-                    <option value="all" v-if="tests.length > 0">All</option>
-                    <option v-for="i in tests" :value="i" :key="i">[[ i ]]</option>
-                </select>
-            </div>
-
-            <div class="selectpicker-titled">
-                <span class="font-h6 font-semibold px-3 item__left text-uppercase">type</span>
-                <select class="selectpicker flex-grow-1" data-style="item__right"
-                    multiple
-                    :disabled="selected_tests.length === 0"
-                    v-model="selected_test_types"
-                >
-                    <option value="all">All</option>
-                    <option v-for="i in test_types" :value="i" :key="i">[[ i ]]</option>
-                </select>
-            </div>
-
-            <div class="selectpicker-titled">
-                <span class="font-h6 font-semibold px-3 item__left text-uppercase">env.</span>
-                <select class="selectpicker flex-grow-1" data-style="item__right"
-                    multiple
-                    :disabled="selected_tests.length === 0"
-                    v-model="selected_test_envs"
-                >
-                    <option value="all">All</option>
-                    <option v-for="i in test_envs" :value="i" :key="i">[[ i ]]</option>
-                </select>
-            </div>
-
-            <div class="selectpicker-titled" 
-                v-show="selected_filters.includes('Backend Aggregation')"
+        <div class="selectpicker-titled">
+            <span class="font-h6 font-semibold px-3 item__left text-uppercase">group</span>
+            <select class="selectpicker flex-grow-1" data-style="item__right"
+                multiple
+                v-model="selected_groups"
             >
-                <span class="font-h6 font-semibold px-3 item__left text-uppercase">aggr. BE</span>
-                <select class="selectpicker flex-grow-1" data-style="item__right"
-                    :disabled="!backend_test_selected"
-                    v-model="selected_aggregation_backend"
-                >
-                    <option value="min">min</option>
-                    <option value="max">max</option>
-                    <option value="mean">mean</option>
-                    <option value="pct50">50 pct</option>
-                    <option value="pct75">75 pct</option>
-                    <option value="pct90">90 pct</option>
-                    <option value="pct95">95 pct</option>
-                    <option value="pct99">99 pct</option>
-                </select>
-            </div>
-            
-            <div class="selectpicker-titled" 
-                v-show="selected_filters.includes('UI Metric')"
-            >
-                <span class="font-h6 font-semibold px-3 item__left text-uppercase">UI metric</span>
-                <select class="selectpicker flex-grow-1" data-style="item__right"
-                    :disabled="!ui_test_selected"
-                    v-model="selected_metric_ui"
-                >
-                    <option value="total">Total Time</option>
-                    <option value="time_to_first_byte">Time To First Byte</option>
-                    <option value="time_to_first_paint">Time To First Paint</option>
-                    <option value="dom_content_loading">Dom Content Load</option>
-                    <option value="dom_processing">Dom Processing</option>
-                    <option value="speed_index">Speed Index</option>
-                    <option value="time_to_interactive">Time To Interactive</option>
-                    <option value="first_contentful_paint">First Contentful Paint</option>
-                    <option value="largest_contentful_paint">Largest Contentful Paint</option>
-                    <option value="cumulative_layout_shift">Cumulative Layout Shift</option>
-                    <option value="total_blocking_time">Total Blocking Time</option>
-                    <option value="first_visual_change">First Visual Change</option>
-                    <option value="last_visual_change">Last Visual Change</option>
-                </select>
-            </div>
-            
-            <div class="selectpicker-titled" 
-                v-show="selected_filters.includes('UI Aggregation')"
-            >
-                <span class="font-h6 font-semibold px-3 item__left text-uppercase">aggr. UI</span>
-                <select class="selectpicker flex-grow-1" data-style="item__right"
-                    :disabled="!ui_test_selected"
-                    v-model="selected_aggregation_ui"
-                >
-                    <option value="min">min</option>
-                    <option value="max">max</option>
-                    <option value="mean">mean</option>
-                    <option value="pct50">50 pct</option>
-                    <option value="pct75">75 pct</option>
-                    <option value="pct90">90 pct</option>
-                    <option value="pct95">95 pct</option>
-                    <option value="pct99">99 pct</option>
-                </select>
-            </div>
+                <option value="all" v-if="groups.length > 0">All</option>
+                <option v-for="i in groups" :value="i" :key="i">[[ i ]]</option>
+            </select>
+        </div>
 
-            <div class="selectpicker-titled">
-                <span class="font-h6 font-semibold px-3 item__left fa fa-calendar"></span>
-                <select class="selectpicker flex-grow-1" data-style="item__right"
-                    v-model="start_time"
-                >
-                    <option value="last_month">Last Month</option>
-                    <option value="last_week">Last Week</option>
-                </select>
-            </div>
+        <div class="selectpicker-titled">
+            <span class="font-h6 font-semibold px-3 item__left text-uppercase">test</span>
+            <select class="selectpicker flex-grow-1" data-style="item__right"
+                multiple
+                :disabled="tests.length === 0"
+                v-model="selected_tests"
+            >
+                <option value="all" v-if="tests.length > 0">All</option>
+                <option v-for="i in tests" :value="i" :key="i">[[ i ]]</option>
+            </select>
+        </div>
+
+        <div class="selectpicker-titled">
+            <span class="font-h6 font-semibold px-3 item__left text-uppercase">type</span>
+            <select class="selectpicker flex-grow-1" data-style="item__right"
+                multiple
+                :disabled="selected_tests.length === 0"
+                v-model="selected_test_types"
+            >
+                <option value="all">All</option>
+                <option v-for="i in test_types" :value="i" :key="i">[[ i ]]</option>
+            </select>
+        </div>
+
+        <div class="selectpicker-titled">
+            <span class="font-h6 font-semibold px-3 item__left text-uppercase">env.</span>
+            <select class="selectpicker flex-grow-1" data-style="item__right"
+                multiple
+                :disabled="selected_tests.length === 0"
+                v-model="selected_test_envs"
+            >
+                <option value="all">All</option>
+                <option v-for="i in test_envs" :value="i" :key="i">[[ i ]]</option>
+            </select>
+        </div>
+
+        <div class="selectpicker-titled" 
+            v-show="selected_filters.includes('Backend Aggregation')"
+        >
+            <span class="font-h6 font-semibold px-3 item__left text-uppercase">aggr. BE</span>
+            <select class="selectpicker flex-grow-1" data-style="item__right"
+                :disabled="!backend_test_selected"
+                v-model="selected_aggregation_backend"
+            >
+                <option value="min">min</option>
+                <option value="max">max</option>
+                <option value="mean">mean</option>
+                <option value="pct50">50 pct</option>
+                <option value="pct75">75 pct</option>
+                <option value="pct90">90 pct</option>
+                <option value="pct95">95 pct</option>
+                <option value="pct99">99 pct</option>
+            </select>
+        </div>
+        
+        <div class="selectpicker-titled" 
+            v-show="selected_filters.includes('UI Metric')"
+        >
+            <span class="font-h6 font-semibold px-3 item__left text-uppercase">UI metric</span>
+            <select class="selectpicker flex-grow-1" data-style="item__right"
+                :disabled="!ui_test_selected"
+                v-model="selected_metric_ui"
+            >
+                <option value="total">Total Time</option>
+                <option value="time_to_first_byte">Time To First Byte</option>
+                <option value="time_to_first_paint">Time To First Paint</option>
+                <option value="dom_content_loading">Dom Content Load</option>
+                <option value="dom_processing">Dom Processing</option>
+                <option value="speed_index">Speed Index</option>
+                <option value="time_to_interactive">Time To Interactive</option>
+                <option value="first_contentful_paint">First Contentful Paint</option>
+                <option value="largest_contentful_paint">Largest Contentful Paint</option>
+                <option value="cumulative_layout_shift">Cumulative Layout Shift</option>
+                <option value="total_blocking_time">Total Blocking Time</option>
+                <option value="first_visual_change">First Visual Change</option>
+                <option value="last_visual_change">Last Visual Change</option>
+            </select>
+        </div>
+        
+        <div class="selectpicker-titled" 
+            v-show="selected_filters.includes('UI Aggregation')"
+        >
+            <span class="font-h6 font-semibold px-3 item__left text-uppercase">aggr. UI</span>
+            <select class="selectpicker flex-grow-1" data-style="item__right"
+                :disabled="!ui_test_selected"
+                v-model="selected_aggregation_ui"
+            >
+                <option value="min">min</option>
+                <option value="max">max</option>
+                <option value="mean">mean</option>
+                <option value="pct50">50 pct</option>
+                <option value="pct75">75 pct</option>
+                <option value="pct90">90 pct</option>
+                <option value="pct95">95 pct</option>
+                <option value="pct99">99 pct</option>
+            </select>
+        </div>
+
+        <div class="selectpicker-titled">
+            <span class="font-h6 font-semibold px-3 item__left fa fa-calendar"></span>
+            <select class="selectpicker flex-grow-1" data-style="item__right"
+                v-model="start_time"
+            >
+                <option value="last_month">Last Month</option>
+                <option value="last_week">Last Week</option>
+            </select>
+        </div>
 
         <MultiselectDropdown
             variant="slot"
@@ -715,6 +827,7 @@ const SummaryFilter = {
             :disabled="is_loading"
         >Apply</button>
     </div>
+    
     <ColorfulCards
         :card_data="colorful_cards_data"
         :backend_metric_name="selected_aggregation_backend_mapped"
@@ -722,51 +835,12 @@ const SummaryFilter = {
         :ui_aggregation_name="selected_aggregation_ui_mapped"
     ></ColorfulCards>
     
-    <div class="selectpicker-titled mt-3 d-inline-flex">
-            <label class="d-inline-flex flex-column">
-                Max points on chart
-                <input type="number" v-model="max_test_on_chart" @change="handle_update_charts" class="form-control">
-            </label>
-            <label class="d-inline-flex flex-column">
-                Chart aggregation
-                <select class="selectpicker"
-                    v-model="chart_aggregation"
-                >
-                    <option value="min">min</option>
-                    <option value="max">max</option>
-                    <option value="mean">mean</option>
-                    <option value="pct50">50 pct</option>
-                    <option value="pct75">75 pct</option>
-                    <option value="pct90">90 pct</option>
-                    <option value="pct95">95 pct</option>
-                    <option value="pct99">99 pct</option>
-                </select>
-            </label>
-            <label class="d-inline-flex flex-column">
-                Axis type
-                <div class="d-inline-flex filter-container align-items-center">
-                    <span>categorical</span>
-                        <label class="custom-toggle mt-0">
-                            <input type="checkbox" v-model="time_axis_type">
-                            <span class="custom-toggle_slider round"></span>
-                        </label>
-                    <span>time</span>
-                </div>
-            </label>
-    </div>
+    <ChartSection
+        :tests="filtered_tests"
+        :selected_aggregation_backend="selected_aggregation_backend"
+        :selected_aggregation_ui="selected_aggregation_ui"
+    ></ChartSection>
     
-    
-
-    <expanded-chart
-        modal_id="expanded_chart_backdrop"
-        :filtered_tests="expanded_chart.data"
-        v-model:show="expanded_chart.show"
-        :initial_max_test_on_chart="max_test_on_chart"
-        :initial_chart_aggregation="chart_aggregation"
-        :initial_time_axis_type="time_axis_type"
-        :data_node="expanded_chart.data_node"
-        :title="expanded_chart.title"
-    ></expanded-chart>
 </div>
     `
 }
