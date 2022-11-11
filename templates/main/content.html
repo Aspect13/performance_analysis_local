@@ -1,4 +1,14 @@
 <div class="p-3">
-    {% include 'performance_analysis:main/summary.html' %}
+    <div class="card">
+        <div class="card-header">
+            <h3>Summary</h3>
+        </div>
+        <div class="card-body d-flex flex-column">
+            <Summary-Filter
+                    @register="register"
+                    instance_name="summary_filter"
+            ></Summary-Filter>
+        </div>
+    </div>
     {% include 'performance_analysis:main/reports_table.html' %}
 </div>

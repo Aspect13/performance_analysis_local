@@ -12,7 +12,9 @@
 >
     <template #actions="{master}">
         <div class="d-flex justify-content-end">
-            <button class="btn btn-secondary mr-2">Compare</button>
+            <button class="btn btn-secondary mr-2"
+                onclick="handle_click_compare()"
+            >Compare</button>
             <div class="d-flex">
                 <select class="selectpicker btn-secondary_item__left" data-style="btn_item__left">
                     <option value="Default">Default</option>

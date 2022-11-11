@@ -1,0 +1,2 @@
+bucket_name: 'comparison'
+file_name_mask: 'comparison_{hash_name}'

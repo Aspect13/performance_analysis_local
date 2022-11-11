@@ -66,7 +66,7 @@ class Module(module.ModuleModel):
         theme.register_page(
             "performance", "analysis",
             "compare",
-            title="UI Test Results",
+            title="Tests Comparison",
             kind="slot",
             prefix="performance_analysis_compare_",
         )

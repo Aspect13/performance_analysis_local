@@ -1,9 +1,20 @@
 const ColorfulCards = {
     delimiters: ['[[', ']]'],
-    props: ['card_data', 'backend_metric_name', 'ui_metric_name', 'ui_aggregation_name'],
+    props: ['card_data', 'selected_aggregation_backend', 'selected_aggregation_ui', 'selected_metric_ui'],
     methods: {
         compute_average(key) {
             return (this.card_data.sums[key] / this.card_data.counters[key]).toFixed(2)
+        }
+    },
+    computed: {
+        backend_metric_name() {
+            return get_mapped_name(this.selected_aggregation_backend)
+        },
+        ui_metric_name() {
+            return get_mapped_name(this.selected_aggregation_ui)
+        },
+        ui_aggregation_name() {
+            return get_mapped_name(this.selected_metric_ui)
         }
     },
     template: `
@@ -75,332 +86,13 @@ const ColorfulCards = {
     `
 }
 
-const ChartSection = {
-    props: ['tests', 'selected_aggregation_backend', 'selected_aggregation_ui'],
-    delimiters: ['[[', ']]'],
-    components: {
-        ExpandedChart: ExpandedChart
-    },
-
-    data() {
-        return {
-            chart_aggregation: 'mean',
-            max_test_on_chart: 6,
-            expanded_chart: {
-                show: false,
-                data: [],
-                data_node: '',
-                title: ''
-            },
-            time_axis_type: false,
-        }
-    },
-    watch: {
-        chart_aggregation() {
-            this.handle_update_charts()
-        },
-        time_axis_type(newValue) {
-            Object.values(window.charts).forEach(i => {
-                i.options.scales.x.type = newValue ? 'time' : 'category'
-            })
-            this.handle_update_charts()
-        },
-    },
-    computed: {
-        filtered_backend_tests() {
-            return this.tests.filter(
-                i => i.group === page_constants.backend_name
-            )
-        },
-        filtered_ui_tests() {
-            return this.tests.filter(
-                i => i.group === page_constants.ui_name
-            )
-        },
-        grouped_data_backend() {
-            if (this.time_axis_type) {
-                // we assume that tests are sorted asc by time
-                const time_groups = calculate_time_groups(
-                    this.filtered_backend_tests.at(0).start_time,
-                    this.filtered_backend_tests.at(-1).start_time,
-                    this.max_test_on_chart
-                )
-                return group_data_by_timeline(this.filtered_backend_tests, time_groups)
-            } else {
-                return group_data(this.filtered_backend_tests, this.max_test_on_chart)
-            }
-        },
-        aggregated_data_backend() {
-            return aggregate_data(this.grouped_data_backend, this.selected_aggregation_backend, this.chart_aggregation)
-        },
-        backend_tests_need_grouping() {
-            return this.filtered_backend_tests.length > this.max_test_on_chart || this.time_axis_type
-        },
-    },
-    methods: {
-        refresh_pickers() {
-            $(this.$el).find('.selectpicker').selectpicker('redner').selectpicker('refresh')
-        },
-        handle_expand_chart(event) {
-            const chart_name = event.target.tagName === 'I' ?
-                event.target.parentElement.dataset.chart_name :
-                event.target.dataset.chart_name
-            const chart = window.charts[chart_name]
-            if (chart) {
-                // Object.assign(window.charts.expanded_chart.options, chart.config.options)
-                // window.charts.expanded_chart.options.plugins.title.text = chart.config.options.plugins.title.text
-                this.expanded_chart.title = chart.config.options.plugins.title.text
-                // window.charts.expanded_chart.options.plugins.tooltip = chart.config.options.plugins.tooltip
-                // Object.assign(window.charts.expanded_chart.data, chart.config.data)
-                // window.charts.expanded_chart.options.scales.x.ticks.maxTicksLimit = 11
-                // const group = ['throughput', 'error_rate', ''].includes(chart_name) ?
-                //     page_constants.backend_name : page_constants.ui_name
-                // this.expanded_chart_data = this.filtered_tests.filter(i => {
-                //     return i.group === group &&
-                // })
-                if (chart_name === 'page_speed') {
-                    // this.expanded_chart_data = this.filtered_ui_tests
-                    // this.expanded_chart_data_node = chart_name
-                    this.expanded_chart.data = this.filtered_ui_tests
-                    this.expanded_chart.data_node = chart_name
-                } else {
-                    // this.expanded_chart_data = this.filtered_backend_tests
-                    // this.expanded_chart_data_node = chart_name === 'response_time' ? this.selected_aggregation_backend : chart_name
-                    this.expanded_chart.data = this.filtered_backend_tests
-                    this.expanded_chart.data_node = chart_name === 'response_time' ?
-                        this.selected_aggregation_backend : chart_name
-                }
-                this.expanded_chart.show = true
-                // window.charts.expanded_chart.update()
-                // $('#expanded_chart_backdrop').modal('show')
-            } else {
-                showNotify('ERROR', `No chart named ${chart_name} found`)
-            }
-        },
-        handle_update_backend_charts() {
-            const throughput_datasets = prepare_datasets(
-                window.charts.throughput,
-                this.aggregated_data_backend.throughput,
-                this.backend_tests_need_grouping,
-                // true,
-                `metric[${this.selected_aggregation_backend_mapped}]`
-            )
-            update_chart(window.charts.throughput, {
-                datasets: throughput_datasets,
-                labels: this.aggregated_data_backend.labels
-            }, {
-                tooltip: get_tooltip_options(
-                    this.aggregated_data_backend.aggregated_tests,
-                    this.aggregated_data_backend.names
-                )
-            })
-
-            const error_rate_datasets = prepare_datasets(
-                window.charts.error_rate,
-                this.aggregated_data_backend.error_rate,
-                this.backend_tests_need_grouping,
-                // true,
-                `metric[${this.selected_aggregation_backend_mapped}]`
-            )
-            update_chart(window.charts.error_rate, {
-                datasets: error_rate_datasets,
-                labels: this.aggregated_data_backend.labels
-            }, {
-                tooltip: get_tooltip_options(
-                    this.aggregated_data_backend.aggregated_tests,
-                    this.aggregated_data_backend.names
-                )
-            })
-
-            // const response_time_datasets = []
-            // this.backend_tests_need_grouping && response_time_datasets.push({
-            //     ...dataset_max(get_gradient_max(window.charts.response_time)),
-            //     data: this.aggregated_data_backend.aggregation.max
-            // })
-            // response_time_datasets.push({
-            //     ...dataset_main(`metric[${this.selected_aggregation_backend_mapped}]`),
-            //     data: this.aggregated_data_backend.aggregation.main
-            // })
-            // this.backend_tests_need_grouping && response_time_datasets.push({
-            //     ...dataset_min(get_gradient_min(window.charts.response_time)),
-            //     data: this.aggregated_data_backend.aggregation.min
-            // })
-            // window.charts.response_time.options.plugins.title.text = `RESPONSE TIME - ${this.selected_aggregation_backend}`
-            // // window.charts.response_time.options.plugins.subtitle = {
-            // //     display: true,
-            // //     text: this.selected_aggregation_backend,
-            // //     align: 'center',
-            // // }
-            // window.charts.response_time.data = {
-            //     datasets: response_time_datasets,
-            //     labels: this.aggregated_data_backend.labels,
-            // }
-            // window.charts.response_time.options.plugins.tooltip = get_tooltip_options(
-            //     this.aggregated_data_backend.aggregated_tests,
-            //     this.aggregated_data_backend.names
-            // )
-            // window.charts.response_time.update()
-            const response_time_datasets = prepare_datasets(
-                window.charts.response_time,
-                this.aggregated_data_backend.aggregation,
-                // this.backend_tests_need_grouping,
-                true,
-                `metric[${this.selected_aggregation_backend_mapped}]`
-            )
-            update_chart(window.charts.response_time, {
-                datasets: response_time_datasets,
-                labels: this.aggregated_data_backend.labels
-            }, {
-                tooltip: get_tooltip_options(
-                    this.aggregated_data_backend.aggregated_tests,
-                    this.aggregated_data_backend.names
-                ),
-                title: {
-                    display: true,
-                    text: `RESPONSE TIME - ${this.selected_aggregation_backend}`,
-                    align: 'start',
-                }
-            })
-        },
-        handle_update_ui_charts() {
-            const datasets = []
-            // this.backend_tests_need_grouping && datasets.push({
-            //     ...dataset_max(get_gradient_max(window.charts.page_speed)),
-            //     data: this.aggregated_data_backend.throughput.max
-            // })
-            datasets.push({
-                ...dataset_main(`metric[${this.selected_aggregation_ui_mapped}]`),
-                data: this.filtered_ui_tests.map(i => {
-                    const metric_data = i.metrics[this.selected_metric_ui]
-                    return metric_data && metric_data[this.selected_aggregation_ui]
-                }),
-            })
-            // this.backend_tests_need_grouping && datasets.push({
-            //     ...dataset_min(get_gradient_min(window.charts.page_speed)),
-            //     data: this.aggregated_data_backend.throughput.min
-            // })
-
-            window.charts.page_speed.data = {
-                datasets: datasets,
-                labels: this.filtered_ui_tests.map(i => i.start_time),
-            }
-            // const title_opts = get_common_chart_options().options.plugins.title
-            // title_opts.text = `PAGE SPEED - ${this.selected_metric_ui_mapped} - ${this.selected_aggregation_ui_mapped}`
-            // window.charts.page_speed.options.plugins.title = title_opts
-            window.charts.page_speed.options.plugins.title = `PAGE SPEED - ${this.selected_metric_ui_mapped} - ${this.selected_aggregation_ui_mapped}`
-            // window.charts.page_speed.options.plugins.subtitle = {
-            //     display: true,
-            //     text: `${this.selected_metric_ui_mapped} : ${this.selected_aggregation_ui_mapped}`,
-            //     align: 'center',
-            // }
-            // window.charts.page_speed.options.plugins.tooltip = get_tooltip_options(
-            //     this.aggregated_data_backend.aggregated_tests,
-            //     this.aggregated_data_backend.names
-            // )
-            window.charts.page_speed.update()
-        },
-        handle_update_charts() {
-            this.handle_update_backend_charts()
-            this.handle_update_ui_charts()
-        },
-    },
-    template: `
-<div>
-    <div class="selectpicker-titled mt-3 d-inline-flex">
-        <label class="d-inline-flex flex-column">
-            Max points on chart
-            <input type="number" v-model="max_test_on_chart" @change="handle_update_charts" class="form-control">
-        </label>
-        <label class="d-inline-flex flex-column">
-            Chart aggregation
-            <select class="selectpicker"
-                v-model="chart_aggregation"
-            >
-                <option value="min">min</option>
-                <option value="max">max</option>
-                <option value="mean">mean</option>
-                <option value="pct50">50 pct</option>
-                <option value="pct75">75 pct</option>
-                <option value="pct90">90 pct</option>
-                <option value="pct95">95 pct</option>
-                <option value="pct99">99 pct</option>
-            </select>
-        </label>
-        <label class="d-inline-flex flex-column">
-            Axis type
-            <div class="d-inline-flex filter-container align-items-center">
-                <span>categorical</span>
-                    <label class="custom-toggle mt-0">
-                        <input type="checkbox" v-model="time_axis_type">
-                        <span class="custom-toggle_slider round"></span>
-                    </label>
-                <span>time</span>
-            </div>
-        </label>
-    </div>
-    
-    <div class="d-flex justify-content-between my-3">
-        <div class="chart-container">
-            <button type="button" class="btn btn-secondary btn-sm btn-icon__sm"
-                    data-chart_name="throughput"
-                    @click="registered_components.summary_filter?.handle_expand_chart"
-            >
-                <i class="fa fa-magnifying-glass-plus"></i>
-            </button>
-            <canvas id="throughput_chart"></canvas>
-        </div>
-        <div class="chart-container">
-            <button type="button" class="btn btn-secondary btn-sm btn-icon__sm"
-                    data-chart_name="error_rate"
-                    @click="registered_components.summary_filter?.handle_expand_chart"
-            >
-                <i class="fa fa-magnifying-glass-plus"></i>
-            </button>
-            <canvas id="error_rate_chart"></canvas>
-        </div>
-        <div class="chart-container">
-            <button type="button" class="btn btn-secondary btn-sm btn-icon__sm"
-                    data-chart_name="response_time"
-                    @click="registered_components.summary_filter?.handle_expand_chart"
-            >
-                <i class="fa fa-magnifying-glass-plus"></i>
-            </button>
-            <canvas id="response_time_chart"></canvas>
-        </div>
-        <div class="chart-container">
-            <button type="button" class="btn btn-secondary btn-sm btn-icon__sm"
-                    data-chart_name="page_speed"
-                    @click="registered_components.summary_filter?.handle_expand_chart"
-            >
-                <i class="fa fa-magnifying-glass-plus"></i>
-            </button>
-            <canvas id="page_speed_chart"></canvas>
-        </div>
-    </div>
-    
-    <ExpandedChart
-        modal_id="expanded_chart_backdrop"
-        :filtered_tests="expanded_chart.data"
-        v-model:show="expanded_chart.show"
-        :initial_max_test_on_chart="max_test_on_chart"
-        :initial_chart_aggregation="chart_aggregation"
-        :initial_time_axis_type="time_axis_type"
-        :data_node="expanded_chart.data_node"
-        :title="expanded_chart.title"
-    ></ExpandedChart>
-</div>
-    `
-}
 
 
-const aggregation_backend_name_map = {}
-const aggregation_ui_name_map = {}
 
 const SummaryFilter = {
     delimiters: ['[[', ']]'],
     components: {
         ColorfulCards: ColorfulCards,
-        ChartSection: ChartSection,
     },
     data() {
         return {
@@ -514,15 +206,15 @@ const SummaryFilter = {
         async start_time(newValue) {
             await this.fetch_data()
         },
-        selected_aggregation_backend() {
-            this.handle_update_backend_charts()
-        },
-        selected_aggregation_ui() {
-            this.handle_update_ui_charts()
-        },
-        selected_metric_ui() {
-            this.handle_update_ui_charts()
-        },
+        // selected_aggregation_backend() {
+        //     this.handle_update_backend_charts()
+        // },
+        // selected_aggregation_ui() {
+        //     this.handle_update_ui_charts()
+        // },
+        // selected_metric_ui() {
+        //     this.handle_update_ui_charts()
+        // },
 
     },
     methods: {
@@ -637,18 +329,18 @@ const SummaryFilter = {
                 sums: {}
             })
         },
-        selected_aggregation_backend_mapped() {
-            return aggregation_backend_name_map[this.selected_aggregation_backend]
-                || this.selected_aggregation_backend
-        },
-        selected_aggregation_ui_mapped() {
-            return aggregation_ui_name_map[this.selected_aggregation_ui]
-                || this.selected_aggregation_ui
-        },
-        selected_metric_ui_mapped() {
-            return aggregation_ui_name_map[this.selected_metric_ui]
-                || this.selected_metric_ui
-        },
+        // selected_aggregation_backend_mapped() {
+        //     return page_constants.aggregation_backend_name_map[this.selected_aggregation_backend]
+        //         || this.selected_aggregation_backend
+        // },
+        // selected_aggregation_ui_mapped() {
+        //     return aggregation_ui_name_map[this.selected_aggregation_ui]
+        //         || this.selected_aggregation_ui
+        // },
+        // selected_metric_ui_mapped() {
+        //     return aggregation_ui_name_map[this.selected_metric_ui]
+        //         || this.selected_metric_ui
+        // },
 
         // tmp() {
         //     return this.filtered_backend_tests.length > 0 && calculate_time_groups(
@@ -830,15 +522,16 @@ const SummaryFilter = {
     
     <ColorfulCards
         :card_data="colorful_cards_data"
-        :backend_metric_name="selected_aggregation_backend_mapped"
-        :ui_metric_name="selected_metric_ui_mapped"
-        :ui_aggregation_name="selected_aggregation_ui_mapped"
+        :selected_aggregation_backend="selected_aggregation_backend"
+        :selected_aggregation_ui="selected_aggregation_ui"
+        :selected_metric_ui="selected_metric_ui"
     ></ColorfulCards>
     
     <ChartSection
         :tests="filtered_tests"
         :selected_aggregation_backend="selected_aggregation_backend"
         :selected_aggregation_ui="selected_aggregation_ui"
+        :selected_metric_ui="selected_metric_ui"
     ></ChartSection>
     
 </div>

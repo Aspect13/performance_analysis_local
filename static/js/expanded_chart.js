@@ -248,7 +248,7 @@ const ExpandedChart = {
         aggregated_data() {
             if (this.time_axis_type) {
                 // we assume that tests are sorted asc by time
-                const time_groups = calculate_time_groups(
+                const time_groups = this.filtered_tests.length === 0 ? [] : calculate_time_groups(
                     this.filtered_tests.at(0).start_time,
                     this.filtered_tests.at(-1).start_time,
                     this.max_test_on_chart

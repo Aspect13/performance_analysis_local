@@ -4,6 +4,25 @@ const page_constants = {
     ui_name: 'ui_performance',
     backend_name: 'backend_performance',
     test_name_delimiter: '::',
+    aggregation_backend_name_map: {},
+    aggregation_ui_name_map: {}
+}
+
+const get_mapped_name = (name, is_from_backend = undefined) => {
+    switch (is_from_backend) {
+        case true:
+
+        case false:
+
+        default:
+            if (page_constants.aggregation_backend_name_map[name]) {
+                return page_constants.aggregation_backend_name_map[name]
+            } else if (page_constants.aggregation_ui_name_map[name]) {
+                return page_constants.aggregation_backend_name_map[name]
+            } else {
+                return name
+            }
+    }
 }
 
 var report_formatters = {
@@ -498,33 +517,24 @@ const get_common_chart_options = () => ({
         },
     },
 })
+
 window.charts = {}
 
-$(() => {
-    const get_small_chart_options = () => {
-        const opts = get_common_chart_options()
-        opts.options.scales.x.ticks.maxTicksLimit = 6
-        opts.options.maintainAspectRatio = false
-        // opts.options.aspectRatio = 1
-        return opts
+const handle_click_compare = async () => {
+    const selections = vueVm.registered_components.table_reports.table_action('getSelections')
+
+    if (selections.length === 0) {
+        showNotify('WARNING', 'Select some tests before pressing compare')
+        return
     }
-    let chart_options = get_small_chart_options()
-    chart_options.options.scales.y.title.text = 'req/sec'
-    chart_options.options.plugins.title.text = 'AVG. THROUGHPUT'
-    window.charts.throughput = new Chart('throughput_chart', chart_options)
 
-    chart_options = get_small_chart_options()
-    chart_options.options.scales.y.title.text = '%'
-    chart_options.options.plugins.title.text = 'ERROR RATE'
-    window.charts.error_rate = new Chart('error_rate_chart', chart_options)
-
-    chart_options = get_small_chart_options()
-    chart_options.options.scales.y.title.text = 'ms'
-    chart_options.options.plugins.title.text = 'RESPONSE TIME'
-    window.charts.response_time = new Chart('response_time_chart', chart_options)
-
-    chart_options = get_small_chart_options()
-    chart_options.options.scales.y.title.text = 'ms'
-    chart_options.options.plugins.title.text = 'PAGE SPEED'
-    window.charts.page_speed = new Chart('page_speed_chart', chart_options)
-})
+    const response = await fetch(`${api_base}/performance_analysis/filter/${getSelectedProjectId()}`, {
+        method: 'POST',
+        body: JSON.stringify({tests: selections}),
+        headers: {'Content-Type': 'application/json'},
+        // redirect: 'manual'
+    })
+    if (response.redirected) {
+        window.location.href = response.url
+    }
+}
