@@ -2,7 +2,6 @@ import json
 from pylon.core.tools import web, log
 
 from tools import MinioClient, session_project
-import botocore
 
 
 class Slot:
@@ -20,10 +19,9 @@ class Slot:
         try:
             comparison_data = MinioClient(project).download_file(
                 self.descriptor.config.get('bucket_name', 'comparison'),
-                f'comparison_{file_hash}.json'
+                f'{file_hash}.json'
             )
         except:
-        # except NoSuchBucket:
             return self.descriptor.render_template(
                 'compare/empty.html',
                 file_name=file_hash

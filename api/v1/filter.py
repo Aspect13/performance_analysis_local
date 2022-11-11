@@ -2,7 +2,7 @@ import json
 from hashlib import md5
 
 from flask_restful import Resource
-from flask import request, jsonify, send_file, redirect
+from flask import request, jsonify, send_file, redirect, url_for
 from io import BytesIO, StringIO
 
 from pylon.core.tools import log
@@ -37,7 +37,6 @@ class API(Resource):
 
     def post(self, project_id: int):
         bucket_name = self.module.descriptor.config.get('bucket_name', 'comparison')
-        file_name_mask = 'comparison_{}.json'
         project = self.module.context.rpc_manager.call.project_get_or_404(project_id=project_id)
         json_data = json.dumps(request.json, ensure_ascii=False).encode('utf-8')
         file = BytesIO()
@@ -55,7 +54,7 @@ class API(Resource):
             client.create_bucket(bucket_name)
         log.info('Bucket created')
         hash_name = md5(file.getbuffer()).hexdigest()
-        client.upload_file(bucket_name, file, file_name_mask.format(hash_name))
+        client.upload_file(bucket_name, file, f'{hash_name}.json')
         log.info('File uploaded')
 
         # todo: retention
@@ -71,5 +70,5 @@ class API(Resource):
         #     data=file,
         #     retention=Retention(GOVERNANCE, date),
         # )
+        return redirect(url_for('.compare', source=hash_name))
         return redirect(f'/-/performance/analysis/compare?source={hash_name}')
-
