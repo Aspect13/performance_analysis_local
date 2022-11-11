@@ -1,13 +1,17 @@
 import json
 from hashlib import md5
+from queue import Empty
 
 from flask_restful import Resource
 from flask import request, jsonify, send_file, redirect, url_for
 from io import BytesIO, StringIO
+from collections import defaultdict
 
 from pylon.core.tools import log
 
 from tools import MinioClient, api_tools
+
+from ...utils import process_query_result
 
 
 class API(Resource):
@@ -22,40 +26,44 @@ class API(Resource):
         project = self.module.context.rpc_manager.call.project_get_or_404(project_id=project_id)
         start_time = request.args.get('start_time')
         end_time = request.args.get('end_time')
-        result = []
-        for plugin in ['backend_performance', 'ui_performance']:
-            rpc_result = self.module.context.rpc_manager.call_function_with_timeout(
-                func=f'performance_analysis_test_runs_{plugin}',
-                timeout=5,
-                project_id=project.id,
-                start_time=start_time,
-                end_time=end_time,
-            )
-            result.extend(rpc_result)
+        tests = []
+        for plugin in ('backend_performance', 'ui_performance'):
+            try:
+                q_data = self.module.context.rpc_manager.call_function_with_timeout(
+                    func=f'performance_analysis_test_runs_{plugin}',
+                    timeout=3,
+                    project_id=project.id,
+                    start_time=start_time,
+                    end_time=end_time,
+                )
+                result = process_query_result(plugin, q_data)
+                tests.extend(list(map(lambda i: i.dict(exclude={'total', 'failures'}), result)))
+            except Empty:
+                ...
 
-        return jsonify(result)
+        return jsonify(tests)
 
     def post(self, project_id: int):
         bucket_name = self.module.descriptor.config.get('bucket_name', 'comparison')
         project = self.module.context.rpc_manager.call.project_get_or_404(project_id=project_id)
-        json_data = json.dumps(request.json, ensure_ascii=False).encode('utf-8')
+        data = dict(request.json)
+        u = defaultdict(set)
+        for t in data['tests']:
+            u[t['group']].add((t['name'], t['test_env'],))
+        data['unique_groups'] = dict()
+        for k, v in u.items():
+            data['unique_groups'][k] = list(v)
         file = BytesIO()
-        file.write(json_data)
+        file.write(json.dumps(data, ensure_ascii=False).encode('utf-8'))
         file.seek(0)
-        # file = BytesIO()
-        # file.write(request.json['tests'])
-        # file.seek(0)
-        # file.close()
-
-        log.info('File created')
-        # api_tools.upload_file(bucket=bucket_name, f=file, project=project)
+        log.debug('File created')
         client = MinioClient(project=project)
         if bucket_name not in client.list_bucket():
             client.create_bucket(bucket_name)
-        log.info('Bucket created')
+        log.debug('Bucket created [%s]', bucket_name)
         hash_name = md5(file.getbuffer()).hexdigest()
         client.upload_file(bucket_name, file, f'{hash_name}.json')
-        log.info('File uploaded')
+        log.debug('File uploaded [%s.json]', hash_name)
 
         # todo: retention
         # from datetime import datetime, timedelta
@@ -70,5 +78,4 @@ class API(Resource):
         #     data=file,
         #     retention=Retention(GOVERNANCE, date),
         # )
-        return redirect(url_for('.compare', source=hash_name))
         return redirect(f'/-/performance/analysis/compare?source={hash_name}')

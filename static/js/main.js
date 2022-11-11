@@ -527,10 +527,14 @@ const handle_click_compare = async () => {
         showNotify('WARNING', 'Select some tests before pressing compare')
         return
     }
+    const {selected_aggregation_backend, selected_aggregation_ui, selected_metric_ui} = vueVm.summary_filter
 
     const response = await fetch(`${api_base}/performance_analysis/filter/${getSelectedProjectId()}`, {
         method: 'POST',
-        body: JSON.stringify({tests: selections}),
+        body: JSON.stringify({
+            tests: selections,
+            selected_aggregation_backend, selected_aggregation_ui, selected_metric_ui
+        }),
         headers: {'Content-Type': 'application/json'},
         // redirect: 'manual'
     })

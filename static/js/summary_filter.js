@@ -244,7 +244,7 @@ const SummaryFilter = {
                     "tags": ['some_tag_1', 'some_tag_2'],
                     "test_env": "mocked_1",
                     "test_type": "mocked_1",
-
+                    id: 0
                 }) // todo: remove
             } else {
                 showNotify('ERROR', 'Error fetching groups')

@@ -1,4 +1,7 @@
 {% set tests = comparison_data.get('tests', []) | tojson %}
+{% set selected_aggregation_backend = comparison_data.get('selected_aggregation_backend', 'pct95') %}
+{% set selected_aggregation_ui = comparison_data.get('selected_aggregation_ui', 'mean') %}
+{% set selected_metric_ui = comparison_data.get('selected_metric_ui', 'total') %}
 {% set table_attrs = {
     'data-page-size': 10,
     'id': 'table_reports',
@@ -6,13 +9,29 @@
     'data-data': '%s'
 } | format(tests) %}
 
+
+<div class="card my-3">
+    <div class="card-header">
+        <a href="/api/v1/artifacts/artifact/1/comparison/{{ file_hash }}.json" download>DOWNLOAD</a>
+    </div>
+    <div class="card-body">
+        <pre>
+            baselines: {{ baselines | tojson }}
+        </pre>
+        <pre>
+            comparison_data: {{ comparison_data | tojson }}
+        </pre>
+    </div>
+</div>
+
+
 <div class="p-3">
     <Table-Card
-        @register="register"
-        instance_name="table_reports"
+            @register="register"
+            instance_name="table_reports"
 
-        header='Tests Comparison'
-        :table_attributes='{{ table_attrs }}'
+            header='Tests Comparison'
+            :table_attributes='{{ table_attrs }}'
     >
         <template #actions="{master}">
 
@@ -60,24 +79,23 @@
         </div>
         <div class="card-body d-flex flex-column">
             <Chart-Section
-                @register="register"
-                instance_name="chart_section"
-                :tests='{{ tests }}'
-                selected_aggregation_backend="pct99"
-                selected_aggregation_ui="mean"
+                    @register="register"
+                    instance_name="chart_section"
+                    :tests='{{ tests }}'
+                    selected_aggregation_backend="{{ selected_aggregation_backend }}"
+                    selected_aggregation_ui="{{ selected_aggregation_ui }}"
+                    selected_metric_ui="{{ selected_metric_ui }}"
             ></Chart-Section>
         </div>
     </div>
 
 
-
     <Table-Card
-        @register="register"
-        instance_name="table_summary"
+            @register="register"
+            instance_name="table_summary"
 
-        header='Summary'
-        :table_attributes='{{ table_attrs }}'
-{#        container_classes="my-3"#}
+            header='Summary'
+            :table_attributes='{{ table_attrs }}'
     >
         <template #actions="{master}">
 
@@ -94,13 +112,23 @@
             >
                 Start
             </th>
-            <th scope="col" data-sortable="true" data-field="total">Ttl req, count</th>
-            <th scope="col" data-sortable="true" data-field="throughput">Thrghpt, req/sec</th>
-            <th scope="col" data-sortable="true" data-field="ko">Errors, count</th>
-            <th scope="col" data-sortable="true" data-field="min">Min, ms</th>
-            <th scope="col" data-sortable="true" data-field="mean">Median, ms</th>
-            <th scope="col" data-sortable="true" data-field="pct95">Pct95, ms</th>
-            <th scope="col" data-sortable="true" data-field="max">Max, ms</th>
+            <th scope="col" data-sortable="true" data-field="metrics.total"
+                data-formatter="summary_formatters.total">Ttl req, count
+            </th>
+            <th scope="col" data-sortable="true" data-field="metrics.total"
+                data-formatter="baseline_formatters.total">BSL. DIFF.</th>
+            <th scope="col" data-sortable="true" data-field="metrics.throughput">Thrghpt, req/sec</th>
+            <th scope="col" data-sortable="true" data-field="metrics.throughput"
+                data-formatter="baseline_formatters.throughput">BSL. DIFF.</th>
+            <th scope="col" data-sortable="true" data-field="metrics.failures">Errors, count</th>
+            <th scope="col" data-sortable="true" data-field="metrics.failures"
+                data-formatter="baseline_formatters.failures">BSL. DIFF.</th>
+            <th scope="col" data-sortable="true" data-field="aggregations.pct95">Pct95, ms</th>
+            <th scope="col" data-sortable="true" data-field="aggregations.pct95"
+                data-formatter="baseline_formatters.aggregations">BSL. DIFF.</th>
+            <th scope="col" data-sortable="true" data-field="metrics.total.mean">Page load</th>
+            <th scope="col" data-sortable="true" data-field="metrics.total.mean"
+                data-formatter="baseline_formatters.page_speed">BSL. DIFF.</th>
         </template>
     </Table-Card>
 </div>
