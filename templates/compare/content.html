@@ -6,8 +6,9 @@
     'data-page-size': 10,
     'id': 'table_reports',
     'data-side-pagination': 'client',
-    'data-data': '%s'
-} | format(tests) %}
+    'data-data': '%s',
+    'baselines': '%s'
+} | format(tests, baselines | default({}) | tojson) %}
 
 
 <div class="card my-3">
@@ -15,13 +16,14 @@
         <a href="/api/v1/artifacts/artifact/1/comparison/{{ file_hash }}.json" download>DOWNLOAD</a>
     </div>
     <div class="card-body">
-        <pre>
+        <pre style="white-space: pre-wrap">
             baselines: {{ baselines | tojson }}
         </pre>
-        <pre>
+        <pre style="white-space: pre-wrap">
             comparison_data: {{ comparison_data | tojson }}
         </pre>
     </div>
+    <button class="btn btn-secondary" onclick="$(this).closest('div.card').css({display: 'none'})">HIDE</button>
 </div>
 
 
