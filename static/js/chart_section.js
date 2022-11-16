@@ -11,7 +11,7 @@ const ChartSection = {
                 data_node: '',
                 title: ''
             },
-            time_axis_type: false,
+            axis_type: 'categorical',
             loaded: {
                 throughput_chart: false,
                 error_rate_chart: false,
@@ -120,6 +120,9 @@ const ChartSection = {
         backend_tests_need_grouping() {
             return this.filtered_backend_tests.length > this.max_test_on_chart || this.time_axis_type
         },
+        time_axis_type() {
+            return this.axis_type === 'time'
+        }
     },
     methods: {
         refresh_pickers() {
@@ -263,13 +266,13 @@ const ChartSection = {
     },
     template: `
 <div>
-    <div class="selectpicker-titled mt-3 d-inline-flex">
+    <div class="d-inline-flex mt-3 chart_controls filter-container">
         <label class="d-inline-flex flex-column">
-            Max points on chart
-            <input type="number" v-model="max_test_on_chart" @change="handle_update_charts" class="form-control">
+            <span class="font-h6">Max points:</span>
+            <input type="number" v-model="max_test_on_chart" @change="handle_update_charts" class="form-control max_points_input">
         </label>
         <label class="d-inline-flex flex-column">
-            Chart aggregation
+            <span class="font-h6">Chart aggr.:</span>
             <select class="selectpicker"
                 v-model="chart_aggregation"
             >
@@ -284,15 +287,11 @@ const ChartSection = {
             </select>
         </label>
         <label class="d-inline-flex flex-column">
-            Axis type
-            <div class="d-inline-flex filter-container align-items-center">
-                <span>categorical</span>
-                    <label class="custom-toggle mt-0">
-                        <input type="checkbox" v-model="time_axis_type">
-                        <span class="custom-toggle_slider round"></span>
-                    </label>
-                <span>time</span>
-            </div>
+            <span class="font-h6">Axis:</span>
+            <TextToggle
+                v-model="axis_type"
+                :labels='["categorical", "time"]'
+            ></TextToggle>
         </label>
     </div>
     
@@ -337,7 +336,7 @@ const ChartSection = {
         v-model:show="expanded_chart.show"
         :initial_max_test_on_chart="max_test_on_chart"
         :initial_chart_aggregation="chart_aggregation"
-        :initial_time_axis_type="time_axis_type"
+        :initial_axis_type="axis_type"
         :data_node="expanded_chart.data_node"
         :title="expanded_chart.title"
     ></ExpandedChart>

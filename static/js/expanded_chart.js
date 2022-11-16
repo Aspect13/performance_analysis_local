@@ -2,16 +2,16 @@ const ExpandedChart = {
     delimiters: ['[[', ']]'],
     props: [
         'modal_id', 'filtered_tests', 'show',
-        'initial_max_test_on_chart', 'initial_chart_aggregation', 'initial_time_axis_type',
+        'initial_max_test_on_chart', 'initial_chart_aggregation', 'initial_axis_type',
         'data_node', 'title',
     ],
     emits: ['update:show'],
     data() {
         return {
             chart_aggregation: 'mean',
-            split_by_test: false,
+            dataset_type: 'aggregated',
             max_test_on_chart: 6,
-            time_axis_type: false,
+            axis_type: 'categorical',
             tmp1: {},
             tmp2: {}
         }
@@ -26,8 +26,8 @@ const ExpandedChart = {
         $(this.$el).on('show.bs.modal', () => {
             this.max_test_on_chart = this.initial_max_test_on_chart
             this.chart_aggregation = this.initial_chart_aggregation
-            this.time_axis_type = this.initial_time_axis_type
-            this.split_by_test = false
+            this.axis_type = this.initial_axis_type
+            this.dataset_type = 'aggregated'
             this.$emit('update:show', true)
             this.$nextTick(this.refresh_pickers)
             this.handle_update_chart()
@@ -269,12 +269,18 @@ const ExpandedChart = {
                 this.filtered_tests.at(-1).start_time,
                 this.max_test_on_chart
             )
+        },
+        time_axis_type() {
+            return this.axis_type === 'time'
+        },
+        split_by_test() {
+            return this.dataset_type !== 'aggregated'
         }
     },
     template: `
 <div :id="modal_id" class="modal" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered"
-        style="min-width: 1200px;"
+         style="min-width: 1200px;"
     >
         <div class="modal-content">
             <div class="modal-header">
@@ -284,67 +290,73 @@ const ExpandedChart = {
                 </button>
             </div>
             <div class="modal-body">
-            <pre><button @click="tmp1 = {}">X</button>[[ tmp1 ]]</pre>
-            <pre><button @click="tmp2 = {}">X</button>[[ tmp2 ]]</pre>
-<!--                <p>Modal body text goes here.</p>-->
-<!--filtered_tests: [[ filtered_tests ]]-->
-<div class="d-flex align-items-center">
-<div><h5>Toolbar</h5></div>
-<div class="d-flex flex-grow-1 justify-content-end align-items-center filter-container">
-
-<div class="custom-input custom-input__sm">
-<label class="d-flex align-items-center filter-container">
-    <span>Max tests on chart</span>
-    <input type="number" class="form-control my-0" 
-        style="max-width: 60px;"
-        v-model="max_test_on_chart"
-    >
-</label>
-</div>
-
-<div class="d-inline-flex filter-container align-items-center">
-    <span class="text-right">aggregated data</span>
-    <label class="custom-toggle mt-0">
-        <input type="checkbox" v-model="split_by_test">
-        <span class="custom-toggle_slider round"></span>
-    </label>
-    <span>test split data</span>
-</div>
-
-<div class="selectpicker-titled d-inline-flex">
-    <span class="font-h6 font-semibold px-3 item__left text-uppercase">chart aggregation</span>
-    <select class="selectpicker flex-grow-1" data-style="item__right"
-        v-model="chart_aggregation"
-    >
-        <option value="min">min</option>
-        <option value="max">max</option>
-        <option value="mean">mean</option>
-        <option value="pct50">50 pct</option>
-        <option value="pct75">75 pct</option>
-        <option value="pct90">90 pct</option>
-        <option value="pct95">95 pct</option>
-        <option value="pct99">99 pct</option>
-    </select>
-</div>
-
-<div class="d-inline-flex filter-container align-items-center">
-    <span class="text-right">categorical axis</span>
-    <label class="custom-toggle mt-0">
-        <input type="checkbox" v-model="time_axis_type">
-        <span class="custom-toggle_slider round"></span>
-    </label>
-    <span>time axis</span>
-</div>
-
-<button class="btn btn-secondary" @click="handle_image_download">Download image</button>
-</div>
-</div>
+                <div v-if="window.location.search.indexOf('test') > -1">
+                    <pre><button @click="tmp1 = {}">X</button>[[ tmp1 ]]</pre>
+                    <pre><button @click="tmp2 = {}">X</button>[[ tmp2 ]]</pre>
+                </div>
+                
+                <div class="d-flex flex-grow-1 filter-container chart_controls align-items-end">
+                    <label class="d-inline-flex flex-column">
+                        <span class="font-h6">Max points:</span>
+                        <input type="number" v-model="max_test_on_chart" class="form-control max_points_input">
+                    </label>
+                    <label class="d-inline-flex flex-column">
+                        <span class="font-h6">Chart aggr.:</span>
+                        <select class="selectpicker"
+                            v-model="chart_aggregation"
+                        >
+                            <option value="min">min</option>
+                            <option value="max">max</option>
+                            <option value="mean">mean</option>
+                            <option value="pct50">50 pct</option>
+                            <option value="pct75">75 pct</option>
+                            <option value="pct90">90 pct</option>
+                            <option value="pct95">95 pct</option>
+                            <option value="pct99">99 pct</option>
+                        </select>
+                    </label>
+                    <label class="d-inline-flex flex-column">
+                        <span class="font-h6">Axis:</span>
+                        <TextToggle
+                            v-model="axis_type"
+                            :labels='["categorical", "time"]'
+                            radio_group_name="expanded_axis_type"
+                        ></TextToggle>
+                    </label>
+                    <label class="d-inline-flex flex-column">
+                        <span class="font-h6">Datasets:</span>
+                        <TextToggle
+                            v-model="dataset_type"
+                            :labels='["aggregated", "split by test"]'
+                        ></TextToggle>
+                    </label>
+                    <div class="selectpicker-titled">
+                        <span class="font-h6 font-semibold px-3 item__left text-uppercase">chart aggregation</span>
+                        <select class="selectpicker flex-grow-1" data-style="item__right"
+                                v-model="chart_aggregation"
+                        >
+                            <option value="min">min</option>
+                            <option value="max">max</option>
+                            <option value="mean">mean</option>
+                            <option value="pct50">50 pct</option>
+                            <option value="pct75">75 pct</option>
+                            <option value="pct90">90 pct</option>
+                            <option value="pct95">95 pct</option>
+                            <option value="pct99">99 pct</option>
+                        </select>
+                    </div>
+                    <div class="flex-grow-1">
+                    </div>
+                    <button class="btn btn-secondary btn-icon" @click="handle_image_download">
+                        <i class="fa fa-download"></i>
+                    </button>
+                </div>
                 <canvas id="expanded_chart"></canvas>
             </div>
-<!--            <div class="modal-footer">-->
-<!--                <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>-->
-<!--                <button type="button" class="btn btn-primary">Save changes</button>-->
-<!--            </div>-->
+            <!--            <div class="modal-footer">-->
+            <!--                <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>-->
+            <!--                <button type="button" class="btn btn-primary">Save changes</button>-->
+            <!--            </div>-->
         </div>
     </div>
 </div>
