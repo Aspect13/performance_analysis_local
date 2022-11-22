@@ -11,17 +11,19 @@
 } | format(tests, baselines | default({}) | tojson) %}
 
 
-<div class="card my-3">
+<div class="card my-3" v-if="window.location.search.indexOf('test') > -1">
     <div class="card-header">
-        <a href="/api/v1/artifacts/artifact/1/comparison/{{ file_hash }}.json" download>DOWNLOAD</a>
+        <a :href="'/api/v1/artifacts/artifact/' + project_id + '/comparison/{{ file_hash }}.json'" download>DOWNLOAD</a>
     </div>
-    <div class="card-body">
-        <pre style="white-space: pre-wrap">
-            baselines: {{ baselines | tojson }}
-        </pre>
-        <pre style="white-space: pre-wrap">
-            comparison_data: {{ comparison_data | tojson }}
-        </pre>
+    <div class="card-body d-flex" style="max-height: 300px;">
+        <div style="overflow: scroll;">
+            <h4>baselines:</h4>
+            <pre>{{ baselines | pretty_json }}</pre>
+        </div>
+        <div style="overflow: scroll;" class="mx-2">
+            <h3>comparison_data:</h3>
+            <pre>{{ comparison_data | pretty_json }}</pre>
+        </div>
     </div>
     <button class="btn btn-secondary" onclick="$(this).closest('div.card').css({display: 'none'})">HIDE</button>
 </div>
@@ -78,6 +80,24 @@
 
     <div class="card my-3">
         <div class="card-header">
+{#            <div class="selectpicker-titled"#}
+{#                 v-show="selected_filters.includes('Backend Aggregation')"#}
+{#            >#}
+{#                <span class="font-h6 font-semibold px-3 item__left text-uppercase">aggr. BE</span>#}
+{#                <select class="selectpicker flex-grow-1" data-style="item__right"#}
+{#                        :disabled="!backend_test_selected"#}
+{#                        v-model="selected_aggregation_backend"#}
+{#                >#}
+{#                    <option value="min">min</option>#}
+{#                    <option value="max">max</option>#}
+{#                    <option value="mean">mean</option>#}
+{#                    <option value="pct50">50 pct</option>#}
+{#                    <option value="pct75">75 pct</option>#}
+{#                    <option value="pct90">90 pct</option>#}
+{#                    <option value="pct95">95 pct</option>#}
+{#                    <option value="pct99">99 pct</option>#}
+{#                </select>#}
+{#            </div>#}
         </div>
         <div class="card-body d-flex flex-column">
             <Chart-Section
@@ -111,30 +131,35 @@
             </th>
             <th scope="col" data-sortable="true" data-field="start_time"
                 data-formatter="report_formatters.start"
+                data-width="200" data-width-unit="px"
             >
                 Start
             </th>
             <th scope="col" data-sortable="true" data-field="metrics.total"
-                data-formatter="summary_formatters.total">Ttl req, count
+                data-formatter="summary_formatters.total"
+            >
+                Ttl req,<br/>count
             </th>
             <th scope="col" data-sortable="true" data-field="metrics.total"
-                data-formatter="baseline_formatters.total">BSL. DIFF.
+                data-formatter="baseline_formatters.total"
+            >
+                BSL.<br/>DIFF.
             </th>
-            <th scope="col" data-sortable="true" data-field="metrics.throughput">Thrghpt, req/sec</th>
+            <th scope="col" data-sortable="true" data-field="metrics.throughput">Thrghpt,<br/>req/sec</th>
             <th scope="col" data-sortable="true" data-field="metrics.throughput"
-                data-formatter="baseline_formatters.throughput">BSL. DIFF.
+                data-formatter="baseline_formatters.throughput">BSL.<br/>DIFF.
             </th>
-            <th scope="col" data-sortable="true" data-field="metrics.failures">Errors, count</th>
+            <th scope="col" data-sortable="true" data-field="metrics.failures">Errors,<br/>count</th>
             <th scope="col" data-sortable="true" data-field="metrics.failures"
-                data-formatter="baseline_formatters.failures">BSL. DIFF.
+                data-formatter="baseline_formatters.failures">BSL.<br/>DIFF.
             </th>
-            <th scope="col" data-sortable="true" data-field="aggregations.pct95">Pct95, ms</th>
+            <th scope="col" data-sortable="true" data-field="aggregations.pct95">Pct95,<br/>ms</th>
             <th scope="col" data-sortable="true" data-field="aggregations.pct95"
-                data-formatter="baseline_formatters.aggregations">BSL. DIFF.
+                data-formatter="baseline_formatters.aggregations">BSL.<br/>DIFF.
             </th>
-            <th scope="col" data-sortable="true" data-field="metrics.total.mean">Page load</th>
+            <th scope="col" data-sortable="true" data-field="metrics.total.mean">Page<br/>load</th>
             <th scope="col" data-sortable="true" data-field="metrics.total.mean"
-                data-formatter="baseline_formatters.page_speed">BSL. DIFF.
+                data-formatter="baseline_formatters.page_speed">BSL.<br/>DIFF.
             </th>
         </template>
     </Table-Card>

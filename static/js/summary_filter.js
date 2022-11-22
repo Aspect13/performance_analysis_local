@@ -116,7 +116,6 @@ const SummaryFilter = {
     },
     async mounted() {
         await this.fetch_data()
-        window.tst = this // todo: temp for tests. REMOVE
     },
     watch: {
         all_data(newValue) {
@@ -230,16 +229,21 @@ const SummaryFilter = {
             )
             if (resp.ok) {
                 this.all_data = await resp.json()
-                this.all_data.push({
-                    metrics: {
-                        total: {
-                            mean: 123,
+                const data_node = new Proxy({}, {
+                    get() {
+                        return {
+                            max: 789,
+                            mean: 456,
+                            min: 123,
                         }
-                    },
+                    }
+                })
+                this.all_data.push({
+                    metrics: data_node,
                     "duration": 95,
                     "group": page_constants.ui_name,
                     "name": "mocked_ui_test",
-                    "start_time": "2022-08-19T09:04:52.479000Z",
+                    "start_time": new Date().toISOString(),
                     "status": "Finished",
                     "tags": ['some_tag_1', 'some_tag_2'],
                     "test_env": "mocked_1",
@@ -318,8 +322,8 @@ const SummaryFilter = {
                         increment_accum(accum, 'response_time', item.aggregations.mean)
                         break
                     case page_constants.ui_name:
-                        const metric_data = item[this.selected_metric_ui]
-                        metric_data && increment_accum(accum, 'aggregation_ui', metric_data?.aggregations[this.selected_aggregation_ui])
+                        const metric_data = item.metrics[this.selected_metric_ui]
+                        metric_data && increment_accum(accum, 'aggregation_ui', metric_data[this.selected_aggregation_ui])
                         break
                     default:
                 }
@@ -353,36 +357,14 @@ const SummaryFilter = {
     },
     template: `
 <div>
-<!--    <div class="d-flex" style="background-color: #80808080">-->
-<!--            <div class="d-flex flex-grow-1">-->
-<!--                DEBUG || -->
-<!--                is_loading: [[ is_loading ]] || -->
-<!--                selected_filters: [[ selected_filters ]] ||-->
-<!--                expanded_chart: [[ expanded_chart.show ]] [[ expanded_chart.title ]] [[ expanded_chart.data_node ]]-->
-<!--            </div>-->
-<!--            <div class="d-flex flex-grow-1">-->
-<!--                <label>-->
-<!--                    Max tests on chart-->
-<!--                    <input type="number" v-model="max_test_on_chart" @change="handle_update_charts" class="form-control">-->
-<!--                </label>-->
-<!--            </div>-->
-<!--    </div>-->
-<!--    <div class="d-flex" style="background-color: #80808080">-->
-<!--        <div class="d-flex flex-grow-1">-->
-<!--            time groups: <pre>[[ tmp ]]</pre>-->
-<!--        </div>-->
-<!--        <div class="d-flex flex-grow-1">-->
-<!--            tests times: <pre>[[ filtered_backend_tests.map(i => new Date(i.start_time).toLocaleString()) ]]</pre>-->
-<!--        </div>-->
-<!--    </div>-->
-<!--    <div class="d-flex" style="background-color: #80808080">-->
-<!--        <div class="d-flex flex-grow-1">-->
-<!--            <pre>[[ grouped_data_backend ]]</pre>-->
-<!--        </div>-->
-<!--        <div class="d-flex flex-grow-1">-->
-<!--            <pre>[[ aggregated_data_backend ]]</pre>-->
-<!--        </div>-->
-<!--    </div>-->
+    <div v-if="window.location.search.indexOf('test') > -1" 
+        class="d-flex" style="background-color: #80808080">
+            <div class="d-flex flex-grow-1">
+                DEBUG || 
+                is_loading: [[ is_loading ]] || 
+                selected_filters: [[ selected_filters ]] ||
+            </div>
+    </div>
     
     <div class="d-flex flex-wrap filter-container">
         <div class="selectpicker-titled">

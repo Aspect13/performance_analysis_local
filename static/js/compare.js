@@ -69,5 +69,5 @@ var baseline_formatters = {
 }
 
 $(document).on('vue_init', () => {
-    window.baselines = JSON.parse(V.registered_components.table_summary.table_attributes.baselines)
+    // window.baselines = JSON.parse(V.registered_components.table_summary.table_attributes.baselines)
 })

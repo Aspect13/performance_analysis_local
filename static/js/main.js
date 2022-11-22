@@ -116,9 +116,18 @@ const process_data_slice = (data_slice, name = undefined) => {
                 })
                 break
             case page_constants.ui_name:
-                // todo: handle ui test group
+                // todo: pass here selected metric in a more sophisticated way
+                const ui_selected_metric = V.summary_filter?.selected_metric_ui
+                ui_selected_metric && Object.entries(i.metrics[ui_selected_metric]).forEach(([k, v]) => {
+                    if (struct.aggregations[k]) {
+                        struct.aggregations[k].push(v)
+                    } else {
+                        struct.aggregations[k] = [v]
+                    }
+                })
                 break
             default:
+                console.error('Unknown group: ', i.group)
                 break
         }
     })
@@ -130,37 +139,6 @@ const group_data_by_timeline = (tests, time_groups) => {
         return []
     }
     let pointers = [0, 0]
-
-    /*
-    const tmp1 = time_groups.map(time_group => {
-        pointers[0] = pointers[1]
-        for (pointers[1]; pointers[1] < tests.length; pointers[1]++) {
-            // pointers[1] = i
-            const tmp = new Date(tests[pointers[1]].start_time) > time_group
-            if (tmp) {
-                break
-            }
-            // time_group > new Date(tests[i].start_time) && pointers[1]++
-        }
-        // pointers[1]++
-        return tests.slice(...pointers)
-        const data_slice = tests.slice(...pointers)
-        // const group_name = data_slice.length > 1 ?
-        //     `${name_prefix} ${pointers[0] + 1}-${pointers[1]}` :
-        //     data_slice[0].name
-        const struct = process_data_slice(data_slice, time_group)
-        struct.start_time = time_group
-        pointers[0] = pointers[1]
-        return struct
-    })
-    return tmp1.map((data_slice, index) => {
-        const time_group = time_groups[index]
-        const struct = process_data_slice(data_slice, time_group.toLocaleString())
-        struct.start_time = time_group
-        pointers[0] = pointers[1]
-        return struct
-    })
-    */
 
     const test_fits_current_group = (test, time_group) => {
         const test_time = new Date(tests[pointers[1]].start_time)
@@ -206,40 +184,6 @@ const group_data = (tests, number_of_groups, name_prefix = 'group') => {
             residual--
         }
         const data_slice = tests.slice(...pointers)
-        // const struct = {
-        //     error_rate: [],
-        //     throughput: [],
-        //     aggregations: {},
-        //     // ui_metric: {}
-        // }
-        // data_slice.forEach(i => {
-        //     switch (i.group) {
-        //         case page_constants.backend_name:
-        //             struct.error_rate.push(i.metrics.error_rate)
-        //             struct.throughput.push(i.metrics.throughput)
-        //             Object.entries(i.aggregations).forEach(([k, v]) => {
-        //                 if (struct.aggregations[k]) {
-        //                     struct.aggregations[k].push(v)
-        //                 } else {
-        //                     struct.aggregations[k] = [v]
-        //                 }
-        //             })
-        //             break
-        //         case page_constants.ui_name:
-        //             // todo: handle ui test group
-        //             break
-        //         default:
-        //             break
-        //     }
-        // })
-        // groups.push({
-        //     name: data_slice.length > 1 ?
-        //         `${name_prefix} ${pointers[0] + 1}-${pointers[1]}` :
-        //         data_slice[0].name,
-        //     aggregated_tests: pointers[1] - pointers[0],
-        //     start_time: data_slice[data_slice.length - 1].start_time, // take start time from last entry of slice
-        //     ...struct
-        // })
         const group_name = data_slice.length > 1 ?
             `${name_prefix} ${pointers[0] + 1}-${pointers[1]}` :
             data_slice[0].name

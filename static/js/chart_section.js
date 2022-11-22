@@ -17,8 +17,7 @@ const ChartSection = {
                 error_rate_chart: false,
                 response_time_chart: false,
                 page_speed_chart: false,
-            },
-            charts_loaded: false
+            }
         }
     },
     mounted() {
@@ -69,16 +68,12 @@ const ChartSection = {
             this.handle_update_charts()
         },
         filtered_backend_tests(newValue) {
-            // wait_for('response_time_chart', window.charts).then(() => this.handle_update_backend_charts())
             this.loaded.throughput_chart &&
             this.loaded.response_time_chart &&
             this.loaded.error_rate_chart && this.handle_update_backend_charts()
-            // this.handle_update_backend_charts()
         },
         filtered_ui_tests(newValue) {
-            // wait_for('page_speed_chart', window.charts).then(this.handle_update_ui_charts)
             this.loaded.page_speed_chart && this.handle_update_ui_charts()
-            // this.handle_update_ui_charts()
         },
         selected_aggregation_backend() {
             this.handle_update_backend_charts()
@@ -102,23 +97,22 @@ const ChartSection = {
             )
         },
         grouped_data_backend() {
-            if (this.time_axis_type) {
-                // we assume that tests are sorted asc by time
-                const time_groups = calculate_time_groups(
-                    this.filtered_backend_tests.at(0).start_time,
-                    this.filtered_backend_tests.at(-1).start_time,
-                    this.max_test_on_chart
-                )
-                return group_data_by_timeline(this.filtered_backend_tests, time_groups)
-            } else {
-                return group_data(this.filtered_backend_tests, this.max_test_on_chart)
-            }
+            return this.get_grouped_data(this.filtered_backend_tests)
+        },
+        grouped_data_ui() {
+            return this.get_grouped_data(this.filtered_ui_tests)
         },
         aggregated_data_backend() {
             return aggregate_data(this.grouped_data_backend, this.selected_aggregation_backend, this.chart_aggregation)
         },
+        aggregated_data_ui() {
+            return aggregate_data(this.grouped_data_ui, this.selected_aggregation_ui, this.chart_aggregation)
+        },
         backend_tests_need_grouping() {
             return this.filtered_backend_tests.length > this.max_test_on_chart || this.time_axis_type
+        },
+        ui_tests_need_grouping() {
+            return this.filtered_ui_tests.length > this.max_test_on_chart || this.time_axis_type
         },
         time_axis_type() {
             return this.axis_type === 'time'
@@ -128,20 +122,20 @@ const ChartSection = {
         refresh_pickers() {
             $(this.$el).find('.selectpicker').selectpicker('redner').selectpicker('refresh')
         },
-        handle_expand_chart2(chart_name) {
-            const event = {
-                target: {
-                    dataset: {
-                        chart_name: chart_name
-                    }
-                }
-            }
-            this.handle_expand_chart(event)
-        },
-        handle_expand_chart(event) {
+        handle_expand_chart_event(event) {
+            // const event = {
+            //     target: {
+            //         dataset: {
+            //             chart_name: chart_name
+            //         }
+            //     }
+            // }
             const chart_name = event.target.tagName === 'I' ?
                 event.target.parentElement.dataset.chart_name :
                 event.target.dataset.chart_name
+            this.handle_expand_chart(chart_name)
+        },
+        handle_expand_chart(chart_name) {
             const chart = window.charts[chart_name]
             if (chart) {
                 // Object.assign(window.charts.expanded_chart.options, chart.config.options)
@@ -156,20 +150,14 @@ const ChartSection = {
                 //     return i.group === group &&
                 // })
                 if (chart_name === 'page_speed') {
-                    // this.expanded_chart_data = this.filtered_ui_tests
-                    // this.expanded_chart_data_node = chart_name
                     this.expanded_chart.data = this.filtered_ui_tests
-                    this.expanded_chart.data_node = chart_name
+                    this.expanded_chart.data_node = this.selected_aggregation_ui
                 } else {
-                    // this.expanded_chart_data = this.filtered_backend_tests
-                    // this.expanded_chart_data_node = chart_name === 'response_time' ? this.selected_aggregation_backend : chart_name
                     this.expanded_chart.data = this.filtered_backend_tests
                     this.expanded_chart.data_node = chart_name === 'response_time' ?
                         this.selected_aggregation_backend : chart_name
                 }
                 this.expanded_chart.show = true
-                // window.charts.expanded_chart.update()
-                // $('#expanded_chart_backdrop').modal('show')
             } else {
                 showNotify('ERROR', `No chart named ${chart_name} found`)
             }
@@ -239,29 +227,70 @@ const ChartSection = {
             this.handle_update_response_time()
         },
         handle_update_ui_charts() {
-            const datasets = []
-            datasets.push({
-                ...dataset_main(`metric[${get_mapped_name(this.selected_aggregation_ui)}]`),
-                data: this.filtered_ui_tests.map(i => {
-                    const metric_data = i.metrics[this.selected_metric_ui]
-                    return metric_data && metric_data[this.selected_aggregation_ui]
-                }),
-            })
-            window.charts.page_speed.data = {
+            const datasets = prepare_datasets(
+                window.charts.page_speed,
+                this.aggregated_data_ui.aggregation,
+                // this.ui_tests_need_grouping,
+                true,
+                `metric[${get_mapped_name(this.selected_aggregation_ui)}]`
+            )
+            update_chart(window.charts.page_speed, {
                 datasets: datasets,
-                labels: this.filtered_ui_tests.map(i => i.start_time),
-            }
-            window.charts.page_speed.options.plugins.title = `PAGE SPEED - ${get_mapped_name(this.selected_metric_ui)} - ${get_mapped_name(this.selected_aggregation_ui)}`
+                labels: this.aggregated_data_ui.labels
+            }, {
+                tooltip: get_tooltip_options(
+                    this.aggregated_data_ui.aggregated_tests,
+                    this.aggregated_data_ui.names
+                ),
+                title: {
+                    display: true,
+                    text: `PAGE SPEED - ${get_mapped_name(this.selected_metric_ui)} - ${get_mapped_name(this.selected_aggregation_ui)}`,
+                    // align: 'start',
+                }
+            })
+
+
+
+
+            // const datasets = []
+            // datasets.push({
+            //     ...dataset_main(`metric[${get_mapped_name(this.selected_aggregation_ui)}]`),
+            //     data: this.filtered_ui_tests.map(i => {
+            //         const metric_data = i.metrics[this.selected_metric_ui]
+            //         return metric_data && metric_data[this.selected_aggregation_ui]
+            //     }),
+            // })
+            // window.charts.page_speed.data = {
+            //     datasets: datasets,
+            //     labels: this.filtered_ui_tests.map(i => i.start_time),
+            // }
+            // window.charts.page_speed.options.plugins.title = `PAGE SPEED - ${get_mapped_name(this.selected_metric_ui)} - ${get_mapped_name(this.selected_aggregation_ui)}`
             // window.charts.page_speed.options.plugins.subtitle = {
             //     display: true,
             //     text: `${this.selected_metric_ui_mapped} : ${this.selected_aggregation_ui_mapped}`,
             //     align: 'center',
             // }
-            window.charts.page_speed.update()
+            // window.charts.page_speed.update()
         },
         handle_update_charts() {
             this.handle_update_backend_charts()
             this.handle_update_ui_charts()
+        },
+        get_grouped_data(tests) {
+            if (tests.length === 0) {
+                return []
+            }
+            if (this.time_axis_type) {
+                // we assume that tests are sorted asc by time
+                const time_groups = calculate_time_groups(
+                    tests.at(0).start_time,
+                    tests.at(-1).start_time,
+                    this.max_test_on_chart
+                )
+                return group_data_by_timeline(tests, time_groups)
+            } else {
+                return group_data(tests, this.max_test_on_chart)
+            }
         },
     },
     template: `
@@ -298,7 +327,7 @@ const ChartSection = {
     <div class="d-flex justify-content-between my-3">
         <div class="chart-container">
             <button type="button" class="btn btn-secondary btn-sm btn-icon__sm"
-                    @click="() => handle_expand_chart2('throughput')"
+                    @click="() => handle_expand_chart('throughput')"
             >
                 <i class="fa fa-magnifying-glass-plus"></i>
             </button>
@@ -306,7 +335,7 @@ const ChartSection = {
         </div>
         <div class="chart-container">
             <button type="button" class="btn btn-secondary btn-sm btn-icon__sm"
-                    @click="() => handle_expand_chart2('error_rate')"
+                    @click="() => handle_expand_chart('error_rate')"
             >
                 <i class="fa fa-magnifying-glass-plus"></i>
             </button>
@@ -314,7 +343,7 @@ const ChartSection = {
         </div>
         <div class="chart-container">
             <button type="button" class="btn btn-secondary btn-sm btn-icon__sm"
-                    @click="() => handle_expand_chart2('response_time')"
+                    @click="() => handle_expand_chart('response_time')"
             >
                 <i class="fa fa-magnifying-glass-plus"></i>
             </button>
@@ -322,7 +351,7 @@ const ChartSection = {
         </div>
         <div class="chart-container">
             <button type="button" class="btn btn-secondary btn-sm btn-icon__sm"
-                    @click="() => handle_expand_chart2('page_speed')"
+                    @click="() => handle_expand_chart('page_speed')"
             >
                 <i class="fa fa-magnifying-glass-plus"></i>
             </button>
