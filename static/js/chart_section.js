@@ -287,9 +287,9 @@ const ChartSection = {
                     tests.at(-1).start_time,
                     this.max_test_on_chart
                 )
-                return group_data_by_timeline(tests, time_groups)
+                return group_data_by_timeline(tests, time_groups, this.selected_metric_ui)
             } else {
-                return group_data(tests, this.max_test_on_chart)
+                return group_data(tests, this.max_test_on_chart, {ui_metric_key: this.selected_metric_ui})
             }
         },
     },
@@ -368,6 +368,7 @@ const ChartSection = {
         :initial_axis_type="axis_type"
         :data_node="expanded_chart.data_node"
         :title="expanded_chart.title"
+        :selected_metric_ui="selected_metric_ui"
     ></ExpandedChart>
 </div>
     `

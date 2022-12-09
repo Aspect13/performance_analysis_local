@@ -93,7 +93,8 @@ const calculate_time_groups = (start_time, end_time, n_of_groups) => {
     return result
 }
 
-const process_data_slice = (data_slice, name = undefined) => {
+const process_data_slice = (data_slice, options = {}) => {
+    const {name, ui_metric_key} = options
     const struct = {
         error_rate: [],
         throughput: [],
@@ -117,8 +118,10 @@ const process_data_slice = (data_slice, name = undefined) => {
                 break
             case page_constants.ui_name:
                 // todo: pass here selected metric in a more sophisticated way
-                const ui_selected_metric = V.summary_filter?.selected_metric_ui
-                ui_selected_metric && Object.entries(i.metrics[ui_selected_metric]).forEach(([k, v]) => {
+                // const ui_selected_metric = V.summary_filter?.selected_metric_ui
+                i.metrics[ui_metric_key] !== undefined && Object.entries(
+                    i.metrics[ui_metric_key]
+                ).forEach(([k, v]) => {
                     if (struct.aggregations[k]) {
                         struct.aggregations[k].push(v)
                     } else {
@@ -134,10 +137,11 @@ const process_data_slice = (data_slice, name = undefined) => {
     return struct
 }
 
-const group_data_by_timeline = (tests, time_groups) => {
+const group_data_by_timeline = (tests, time_groups, options = {}) => {
     if (tests.length === 0) {
         return []
     }
+    const {ui_metric_key} = options
     let pointers = [0, 0]
 
     const test_fits_current_group = (test, time_group) => {
@@ -166,13 +170,14 @@ const group_data_by_timeline = (tests, time_groups) => {
         const group_name = data_slice.length > 1 ?
             `${new Date(data_slice.at(0).start_time).toLocaleString()} - ${new Date(data_slice.at(-1).start_time).toLocaleString()}` :
             data_slice[0]?.name
-        const struct = process_data_slice(data_slice, group_name)
+        const struct = process_data_slice(data_slice, {name: group_name, ui_metric_key})
         struct.start_time = get_time_group_label(time_group)
         return struct
     })
 }
 
-const group_data = (tests, number_of_groups, name_prefix = 'group') => {
+const group_data = (tests, number_of_groups, options = {name_prefix: 'group'}) => {
+    const {name_prefix, ui_metric_key} = {name_prefix: 'group', ...options}
     let residual = tests.length % number_of_groups
     const group_size = ~~(tests.length / number_of_groups)
     let groups = []
@@ -187,7 +192,7 @@ const group_data = (tests, number_of_groups, name_prefix = 'group') => {
         const group_name = data_slice.length > 1 ?
             `${name_prefix} ${pointers[0] + 1}-${pointers[1]}` :
             data_slice[0].name
-        const struct = process_data_slice(data_slice, group_name)
+        const struct = process_data_slice(data_slice, {name: group_name, ui_metric_key})
         groups.push(struct)
         pointers[0] = pointers[1]
     }

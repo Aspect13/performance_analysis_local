@@ -22,37 +22,8 @@ class API(Resource):
     def __init__(self, module):
         self.module = module
 
-    def get(self, project_id: int):
-        project = self.module.context.rpc_manager.call.project_get_or_404(project_id=project_id)
-        start_time = request.args.get('start_time')
-        end_time = request.args.get('end_time')
-        tests = []
-        for plugin in ('backend_performance', 'ui_performance'):
-            try:
-                q_data = self.module.context.rpc_manager.call_function_with_timeout(
-                    func=f'performance_analysis_test_runs_{plugin}',
-                    timeout=3,
-                    project_id=project.id,
-                    start_time=start_time,
-                    end_time=end_time,
-                )
-                result = process_query_result(plugin, q_data)
-                tests.extend(list(map(lambda i: i.dict(exclude={'total', 'failures'}), result)))
-            except Empty:
-                ...
-
-        return jsonify(tests)
-
-    def post(self, project_id: int):
+    def __upload_to_json(self, project, data: dict) -> str:
         bucket_name = self.module.descriptor.config.get('bucket_name', 'comparison')
-        project = self.module.context.rpc_manager.call.project_get_or_404(project_id=project_id)
-        data = dict(request.json)
-        u = defaultdict(set)
-        for t in data['tests']:
-            u[t['group']].add((t['name'], t['test_env'],))
-        data['unique_groups'] = dict()
-        for k, v in u.items():
-            data['unique_groups'][k] = list(v)
         file = BytesIO()
         file.write(json.dumps(data, ensure_ascii=False).encode('utf-8'))
         file.seek(0)
@@ -78,4 +49,49 @@ class API(Resource):
         #     data=file,
         #     retention=Retention(GOVERNANCE, date),
         # )
+        return hash_name
+
+    def get(self, project_id: int):
+        project = self.module.context.rpc_manager.call.project_get_or_404(project_id=project_id)
+        start_time = request.args.get('start_time')
+        end_time = request.args.get('end_time')
+        tests = []
+        for plugin in ('backend_performance', 'ui_performance'):
+            try:
+                q_data = self.module.context.rpc_manager.call_function_with_timeout(
+                    func=f'performance_analysis_test_runs_{plugin}',
+                    timeout=3,
+                    project_id=project.id,
+                    start_time=start_time,
+                    end_time=end_time,
+                )
+                result = process_query_result(plugin, q_data)
+                tests.extend(list(map(lambda i: i.dict(exclude={'total', 'failures'}), result)))
+            except Empty:
+                ...
+
+        return jsonify(tests)
+
+    def post(self, project_id: int):
+        project = self.module.context.rpc_manager.call.project_get_or_404(project_id=project_id)
+        data = dict(request.json)
+        u = defaultdict(set)
+        for t in data['tests']:
+            u[t['group']].add((t['name'], t['test_env'],))
+        data['unique_groups'] = dict()
+        for k, v in u.items():
+            data['unique_groups'][k] = list(v)
+
+        if 'ui_performance' in data['unique_groups']:
+            ui_performance_builder_data = self.module.context.rpc_manager.timeout(
+                3
+            ).ui_performance_compile_builder_data(project.id, data['tests'])
+            # merge dataset data with test data
+            all_ui_datasets = ui_performance_builder_data.pop('datasets')
+            for i in data['tests']:
+                i['datasets'] = all_ui_datasets.get(i['id'])
+            data['ui_performance_builder_data'] = ui_performance_builder_data
+
+
+        hash_name = self.__upload_to_json(project, data)
         return redirect(f'/-/performance/analysis/compare?source={hash_name}')

@@ -1,0 +1,10 @@
+.builder_filter_container {
+    width: 290px;
+    max-height: 500px;
+    /*margin-left: 28px;*/
+}
+
+.builder_filter_blocks {
+    overflow: scroll;
+    height: 100%;
+}

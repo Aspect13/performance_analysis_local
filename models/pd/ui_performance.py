@@ -27,6 +27,7 @@ class UIAnalysisMetrics(BaseModel):
 
 class UIAnalysisModel(BaseAnalysisModel):
     metrics: UIAnalysisMetrics
+    uid: str
 
     @root_validator(pre=True)
     def set_nested_data(cls, values: dict) -> dict:

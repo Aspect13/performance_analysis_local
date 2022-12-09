@@ -4,12 +4,10 @@
 {% set selected_metric_ui = comparison_data.get('selected_metric_ui', 'total') %}
 {% set table_attrs = {
     'data-page-size': 10,
-    'id': 'table_reports',
     'data-side-pagination': 'client',
     'data-data': '%s',
     'baselines': '%s'
 } | format(tests, baselines | default({}) | tojson) %}
-
 
 <div class="card my-3" v-if="window.location.search.indexOf('test') > -1">
     <div class="card-header">
@@ -80,24 +78,24 @@
 
     <div class="card my-3">
         <div class="card-header">
-{#            <div class="selectpicker-titled"#}
-{#                 v-show="selected_filters.includes('Backend Aggregation')"#}
-{#            >#}
-{#                <span class="font-h6 font-semibold px-3 item__left text-uppercase">aggr. BE</span>#}
-{#                <select class="selectpicker flex-grow-1" data-style="item__right"#}
-{#                        :disabled="!backend_test_selected"#}
-{#                        v-model="selected_aggregation_backend"#}
-{#                >#}
-{#                    <option value="min">min</option>#}
-{#                    <option value="max">max</option>#}
-{#                    <option value="mean">mean</option>#}
-{#                    <option value="pct50">50 pct</option>#}
-{#                    <option value="pct75">75 pct</option>#}
-{#                    <option value="pct90">90 pct</option>#}
-{#                    <option value="pct95">95 pct</option>#}
-{#                    <option value="pct99">99 pct</option>#}
-{#                </select>#}
-{#            </div>#}
+{#                        <div class="selectpicker-titled"#}
+{#                             v-show="selected_filters.includes('Backend Aggregation')"#}
+{#                        >#}
+{#                            <span class="font-h6 font-semibold px-3 item__left text-uppercase">aggr. BE</span>#}
+{#                            <select class="selectpicker flex-grow-1" data-style="item__right"#}
+{#                                    :disabled="!backend_test_selected"#}
+{#                                    v-model="selected_aggregation_backend"#}
+{#                            >#}
+{#                                <option value="min">min</option>#}
+{#                                <option value="max">max</option>#}
+{#                                <option value="mean">mean</option>#}
+{#                                <option value="pct50">50 pct</option>#}
+{#                                <option value="pct75">75 pct</option>#}
+{#                                <option value="pct90">90 pct</option>#}
+{#                                <option value="pct95">95 pct</option>#}
+{#                                <option value="pct99">99 pct</option>#}
+{#                            </select>#}
+{#                        </div>#}
         </div>
         <div class="card-body d-flex flex-column">
             <Chart-Section
@@ -160,6 +158,75 @@
             <th scope="col" data-sortable="true" data-field="metrics.total.mean">Page<br/>load</th>
             <th scope="col" data-sortable="true" data-field="metrics.total.mean"
                 data-formatter="baseline_formatters.page_speed">BSL.<br/>DIFF.
+            </th>
+        </template>
+    </Table-Card>
+
+
+    <div class="card my-3">
+        <div class="card-header d-inline-flex">
+            <h3>Comparison builder</h3>
+            <div class="ml-3">
+                <div class="selectpicker-titled">
+                    <span class="font-h6 font-semibold px-3 item__left text-uppercase">Time aggregation</span>
+                    <select class="selectpicker flex-grow-1" data-style="item__right"
+                            v-model="custom_data.time_aggregation"
+                    >
+                        <option value="auto" selected>Auto</option>
+                        <option value="30s">30s</option>
+                        <option value="1m">1m</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+        <div class="card-body d-flex">
+            <div class="flex-grow-1">
+                <canvas id="builder_chart"></canvas>
+            </div>
+
+            <Builder-Filter
+                    :unique_groups='{{ comparison_data["unique_groups"] | tojson }}'
+                    :ui_performance_builder_data='{{ comparison_data["ui_performance_builder_data"] | tojson }}'
+                    :tests='{{ tests }}'
+            ></Builder-Filter>
+        </div>
+    </div>
+
+    <Table-Card
+            @register="register"
+            instance_name="table_comparison"
+            header='Comparison Builder Summary'
+            :table_attributes='{"data-page-size": 10, "data-side-pagination": "client"}'
+    >
+        <template #actions="{master}">
+
+        </template>
+        <template #table_headers="{master}">
+            <th scope="col" data-sortable="true" data-field="name"
+                data-formatter="report_formatters.name"
+            >
+                Name
+            </th>
+            <th scope="col" data-sortable="true" data-field="start_time"
+                data-formatter="report_formatters.start"
+                data-width="200" data-width-unit="px"
+            >
+                Start
+            </th>
+            <th scope="col" data-sortable="true" data-field="selector_name">
+                Transaction/request/page action
+            </th>
+            <th scope="col" data-sortable="true" data-field="selector_value">
+                Value
+            </th>
+            <th scope="col" data-sortable="true" data-field="selector_value">
+                Aggregation min
+            </th>
+            <th scope="col" data-sortable="true" data-field="selector_value">
+                Aggregation mean
+            </th>
+            <th scope="col" data-sortable="true" data-field="selector_value">
+                Aggregation max
             </th>
         </template>
     </Table-Card>

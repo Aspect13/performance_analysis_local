@@ -3,7 +3,7 @@ const ExpandedChart = {
     props: [
         'modal_id', 'filtered_tests', 'show',
         'initial_max_test_on_chart', 'initial_chart_aggregation', 'initial_axis_type',
-        'data_node', 'title',
+        'data_node', 'title', 'selected_metric_ui'
     ],
     emits: ['update:show'],
     data() {
@@ -100,9 +100,13 @@ const ExpandedChart = {
                 let aggregated_data
                 if (this.time_axis_type) {
                     // we assume that tests are sorted asc by time
-                    aggregated_data = this.get_aggregated_dataset(group_data_by_timeline(test_data, this.time_groups))
+                    aggregated_data = this.get_aggregated_dataset(
+                        group_data_by_timeline(test_data, this.time_groups, this.selected_metric_ui)
+                    )
                 } else {
-                    aggregated_data = this.get_aggregated_dataset(group_data(test_data, this.max_test_on_chart))
+                    aggregated_data = this.get_aggregated_dataset(
+                        group_data(test_data, this.max_test_on_chart, {ui_metric_key: this.selected_metric_ui})
+                    )
                 }
                 labels.push(aggregated_data.labels)
                 return {
@@ -193,9 +197,13 @@ const ExpandedChart = {
         },
         aggregated_data() {
             if (this.time_axis_type) {
-                return this.get_aggregated_dataset(group_data_by_timeline(this.filtered_tests, this.time_groups))
+                return this.get_aggregated_dataset(
+                    group_data_by_timeline(this.filtered_tests, this.time_groups, this.selected_metric_ui)
+                )
             } else {
-                return this.get_aggregated_dataset(group_data(this.filtered_tests, this.max_test_on_chart))
+                return this.get_aggregated_dataset(
+                    group_data(this.filtered_tests, this.max_test_on_chart, {ui_metric_key: this.selected_metric_ui})
+                )
             }
         },
         tests_need_grouping() {

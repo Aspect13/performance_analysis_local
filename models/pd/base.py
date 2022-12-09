@@ -1,4 +1,6 @@
-from pydantic import BaseModel, validator, parse_obj_as, root_validator
+from datetime import datetime
+
+from pydantic import BaseModel
 from typing import Optional, List
 
 
@@ -17,7 +19,7 @@ class BaseAnalysisModel(BaseModel):
     id: int
     group: str
     name: str
-    start_time: str
+    start_time: datetime
     test_type: str
     test_env: str
     status: str

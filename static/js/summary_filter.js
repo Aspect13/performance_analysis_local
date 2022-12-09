@@ -87,8 +87,6 @@ const ColorfulCards = {
 }
 
 
-
-
 const SummaryFilter = {
     delimiters: ['[[', ']]'],
     components: {
@@ -229,27 +227,26 @@ const SummaryFilter = {
             )
             if (resp.ok) {
                 this.all_data = await resp.json()
-                const data_node = new Proxy({}, {
-                    get() {
-                        return {
-                            max: 789,
-                            mean: 456,
-                            min: 123,
-                        }
-                    }
-                })
-                this.all_data.push({
-                    metrics: data_node,
-                    "duration": 95,
-                    "group": page_constants.ui_name,
-                    "name": "mocked_ui_test",
-                    "start_time": new Date().toISOString(),
-                    "status": "Finished",
-                    "tags": ['some_tag_1', 'some_tag_2'],
-                    "test_env": "mocked_1",
-                    "test_type": "mocked_1",
-                    id: 0
-                }) // todo: remove
+                // this.all_data.push({
+                //     metrics: new Proxy({}, {
+                //         get() {
+                //             return {
+                //                 max: 789,
+                //                 mean: 456,
+                //                 min: 123,
+                //             }
+                //         }
+                //     }),
+                //     "duration": 95,
+                //     "group": page_constants.ui_name,
+                //     "name": "mocked_ui_test",
+                //     "start_time": new Date().toISOString(),
+                //     "status": "Finished",
+                //     "tags": ['some_tag_1', 'some_tag_2'],
+                //     "test_env": "mocked_1",
+                //     "test_type": "mocked_1",
+                //     id: 0
+                // }) // todo: remove
             } else {
                 showNotify('ERROR', 'Error fetching groups')
             }
