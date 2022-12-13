@@ -27,6 +27,7 @@ const get_mapped_name = (name, is_from_backend = undefined) => {
 
 var report_formatters = {
     name(value) {
+        // todo: link to results page
         return value
     },
     start(value, row, index) {
@@ -488,6 +489,8 @@ const handle_click_compare = async () => {
         // redirect: 'manual'
     })
     if (response.redirected) {
-        window.location.href = response.url
+        // window.location.href = response.url
+        // todo: remove
+        window.location.href = response.url + '&' + $.param({test: 1})
     }
 }

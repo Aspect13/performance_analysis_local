@@ -1,7 +1,7 @@
 .builder_filter_container {
-    width: 290px;
-    max-height: 500px;
-    /*margin-left: 28px;*/
+    width: 280px;
+    max-height: 100vh;
+    margin-left: 25px;
 }
 
 .builder_filter_blocks {

@@ -13,16 +13,36 @@ const chart_options = {
             },
             title: {
                 display: false
-            }
+            },
+      tooltip: {
+        callbacks: {
+          // afterTitle: (tooltip_item) => {
+          //     console.log('tti', tooltip_item)
+          //     return 'qwerty\nasdf\t123'
+          // },
+            beforeLabel: ({raw}) => `${raw.tooltip.test_name}(${raw.tooltip.test_id})\nenv: '${raw.tooltip.test_env}';\tloop: ${raw.tooltip.loop}`,
+            afterLabel: ({raw}) => `page: ${raw.tooltip.page}\n`,
+            label: ({raw, formattedValue}) => `${raw.tooltip.metric}: ${formattedValue}`
+        }
+      }
         },
         scales: {
             x: {
                 type: 'time',
+                // time: {
+                //     // unit: 'day',
+                //     displayFormats: {
+                //         // day: 'dd MM'
+                //         day: 'P'
+                //     },
+                //     minUnit: 'hour'
+                // },
                 // grid: {
                 //     display: false
                 // },
                 ticks: {
-                    count: 10
+                    count: 10,
+                    max: 10
                 }
             },
             y: {
@@ -216,62 +236,25 @@ const FilterBlock = {
     // components: {
     //     'FilterDropdown': FilterDropdown,
     // },
-    props: ['idx', 'block_id', 'block_type', 'transaction_options', 'metric_options'],
-    emits: ['remove'],
+    props: ['idx', 'block_id', 'block_type', 'transaction_options', 'metric_options', 'is_loading'],
+    emits: ['remove', 'apply'],
     data() {
         return {
             selected_transactions: [],
             selected_metrics: [],
-            is_loading: false,
+            // is_loading: false,
         }
     },
     methods: {
-        get_random_color() {
-            return `rgb(${Math.floor(Math.random() * 255)}, ${Math.floor(Math.random() * 255)}, ${Math.floor(Math.random() * 255)})`
-        },
         handle_apply_click() {
-            this.is_loading = true
+            // this.is_loading = true
             // setTimeout(() => this.is_loading = false, 4000)
             console.log(this.$data)
-            // window.charts.builder.data.datasets
-            let datasets = []
-            window.tmp.forEach(test => {
-                Object.entries(test.datasets).forEach(([loop_id, ds]) => {
-                    const metrics_datasets = this.selected_metrics.map(i => {
-                        const data = ds[i].map((item, index) => {
-                            const time_delta = new Date(ds['timestamp'][index]) -
-                                new Date(ds['timestamp'][0])
-                            return {
-                                x: new Date(new Date(window.earliest_date).valueOf() + time_delta),
-                                y: item
-                            }
-                        }) // todo: splice data from selected pages
-                        // console.log('data', data)
-                        const dataset = {
-                            label: `Loop[${loop_id}]: ${i}`,
-                            data: data,
-                            // fill: false,
-                            borderColor: this.get_random_color(),
-                            // tension: 0.1,
-                            type: 'scatter',
-                            // hidden: true,
-                            source_block_id: this.block_id
-                        }
-                        console.log('dataset', dataset)
-                        return dataset
-                    })
-                    datasets = [...datasets, ...metrics_datasets]
-                })
-            })
-            clear_block_filter(this.block_id,false)
-            window.charts.builder.data.datasets = [...window.charts.builder.data.datasets, ...datasets]
-
-            window.charts.builder.update()
-            this.is_loading = false
+            this.$emit('apply', this.idx, this.selected_transactions, this.selected_metrics)
+            // this.is_loading = false
         },
 
         handle_remove() {
-            clear_block_filter(this.block_id)
             this.$emit('remove', this.idx)
         }
     },
@@ -318,8 +301,13 @@ const FilterBlock = {
 // const BACKEND_OPTIONS = ['bk1', 'bk2', 'bk3']
 // const UI_OPTIONS = ['ui_1', 'ui_2', 'ui1']
 const JOIN_CHAR = ' | '
+const get_random_color = () => {
+    const rnd = () => Math.floor(Math.random() * 255)
+    return `rgb(${rnd()}, ${rnd()}, ${rnd()})`
+}
 
 const BuilderFilter = {
+    delimiters: ['[[', ']]'],
     components: {
         'FilterBlock': FilterBlock,
     },
@@ -328,8 +316,8 @@ const BuilderFilter = {
         return {
             blocks: [],
             metrics: {
-                ui: {
-                    load_time: 'load_time',
+                [page_constants.ui_name]: {
+                    'Load Time': 'load_time',
                     dom: 'dom',
                     tti: 'tti',
                     fcp: 'fcp',
@@ -339,9 +327,9 @@ const BuilderFilter = {
                     fvc: 'fvc',
                     lvc: 'lvc',
                 },
-                backend: {
-                    dummy1: 'Dummy1',
-                    dummy2: 'Dummy2'
+                [page_constants.backend_name]: {
+                    'Dummy 1': 'dummy1',
+                    'Dummy 2': 'dummy2'
                 }
             },
             backend_options: [],
@@ -349,6 +337,7 @@ const BuilderFilter = {
             is_loading: false,
             all_tests_backend_requests: ['dummy1', 'dummy2'],
             all_tests_ui_pages: [],
+            earliest_date: new Date()
         }
     },
     async mounted() {
@@ -358,8 +347,8 @@ const BuilderFilter = {
         this.all_tests_ui_pages = page_names
         this.set_options()
 
-        window.tmp = this.tests  // todo: remove
-        window.earliest_date = earliest_date
+        // window.tmp = this.tests  // todo: remove
+        this.earliest_date = new Date(earliest_date)
         // chart_options.data = {
         //     labels: Array.from(Array(max_x_axis_labels)).map((_, i) => `step ${i}`)
         // }
@@ -367,7 +356,8 @@ const BuilderFilter = {
     },
     methods: {
         handle_remove(idx) {
-            this.blocks.splice(idx, 1)
+            const {id: block_id} = this.blocks.splice(idx, 1)[0]
+            clear_block_filter(block_id)
         },
         make_id() {
             return new Date().valueOf()
@@ -377,27 +367,6 @@ const BuilderFilter = {
             this.blocks = []
             window.charts.builder.update()
         },
-        // async fetch_ui_data() {
-        //     this.is_loading = true
-        //     let result
-        //     try {
-        //         const response = await fetch('/api/v1/ui_performance/analytics/1', {
-        //             method: 'POST',
-        //             headers: {'Content-Type': 'application/json'},
-        //             body: JSON.stringify({
-        //                 ids: [8]
-        //             })
-        //         })
-        //         result = await response.json()
-        //
-        //     } catch (e) {
-        //         console.error('Error', e)
-        //         result = {}
-        //     } finally {
-        //         this.is_loading = false
-        //     }
-        //     return result
-        // },
         set_options() {
             Object.entries(this.unique_groups).forEach(([group, i]) => {
                 switch (group) {
@@ -423,6 +392,105 @@ const BuilderFilter = {
                         console.warn('Unknown test group: ', group)
                 }
             })
+        },
+        handle_apply(block_index, selected_pages, selected_metrics) {
+            // window.charts.builder.data.datasets
+            const block_data = this.blocks[block_index]
+            block_data.is_loading = true
+            const get_pages_to_display = test => selected_pages.reduce((accum, option) => {
+                const [test_name, test_env, page_name] = option.split(JOIN_CHAR)
+                if (test_name === test.name && test_env === test.test_env) {
+                    accum.push(page_name)
+                }
+                return accum
+            }, [])
+            let datasets = []
+            this.tests.forEach(test => {
+                if (test.group === block_data.type) {
+                    const pages = get_pages_to_display(test)
+                    pages.forEach(page => {
+                        Object.entries(test.datasets[page]).forEach(([loop_id, ds]) => {
+                            const metrics_data = selected_metrics.map(i => {
+                                const metric_data_key = this.metrics[block_data.type][i]
+                                const time_delta = new Date(ds['timestamp']) - new Date(test.start_time)
+                                return {
+                                    x: new Date(this.earliest_date.valueOf() + time_delta),
+                                    y: ds[metric_data_key],
+                                    tooltip: {
+                                        test_name: test.name,
+                                        test_env: test.test_env,
+                                        test_id: test.id,
+                                        loop: loop_id,
+                                        metric: i,
+                                        page: page
+                                    }
+                                }
+
+                            })
+                            const color = get_random_color()
+                            const dataset = {
+                                label: `${test.name}(id:${test.id}) - ${page}`,
+                                data: metrics_data,
+                                fill: true,
+                                borderColor: color,
+                                backgroundColor: color,
+                                // tension: 0.1,
+                                type: 'scatter',
+                                radius: 4,
+                                // hidden: true,
+                                source_block_id: block_data.id
+                            }
+                            console.log('dataset', dataset)
+                            datasets.push(dataset)
+                            // datasets = [...datasets, ...dataset]
+                        })
+                    })
+                    // Object.entries(test.datasets).forEach(([loop_id, ds]) => {
+                    //     const metrics_datasets = selected_metrics.map(i => {
+                    //         const metric_data_key = this.metrics[block_data.type][i]
+                    //         const data = ds[metric_data_key].map((item, index) => {
+                    //             const time_delta = new Date(ds['timestamp'][index]) -
+                    //                 new Date(ds['timestamp'][0])
+                    //             return {
+                    //                 x: new Date(this.earliest_date.valueOf() + time_delta),
+                    //                 y: item
+                    //             }
+                    //         }) // todo: splice data from selected pages
+                    //         const dataset = {
+                    //             label: `Loop[${loop_id}]: ${i}`,
+                    //             data: data,
+                    //             // fill: false,
+                    //             borderColor: get_random_color(),
+                    //             // tension: 0.1,
+                    //             type: 'scatter',
+                    //             // hidden: true,
+                    //             source_block_id: new Set().add(block_data.id)
+                    //         }
+                    //         console.log('dataset', dataset)
+                    //         return dataset
+                    //     })
+                    //     datasets = [...datasets, ...metrics_datasets]
+                    // })
+                }
+            })
+            setTimeout(() => {
+                block_data.is_loading = false
+            }, 2000)
+            // block_data.is_loading = false
+            clear_block_filter(block_data.id, false)
+            window.charts.builder.data.datasets = [...window.charts.builder.data.datasets, ...datasets]
+
+            window.charts.builder.update()
+        },
+        handle_add_filter_block(block_type = undefined) {
+            if (block_type === undefined) {
+                block_type = this.backend_options.length === 0 ? page_constants.ui_name : page_constants.backend_name
+            }
+            this.blocks.push({
+                id: this.make_id(),
+                type: block_type,
+                is_loading: false
+            })
         }
     },
     template: `
@@ -434,7 +502,7 @@ const BuilderFilter = {
                     <span @click="handle_clear_all">Clear all</span>
                     <button class="btn"
                         v-if="backend_options.length === 0 || ui_options.length === 0"
-                        @click="blocks.push({id: make_id(), type: backend_options.length === 0 ? 'ui' : 'backend'})"
+                        @click="handle_add_filter_block()"
                     >
                         <i class="fa fa-plus text-purple"></i>
                     </button>
@@ -450,10 +518,10 @@ const BuilderFilter = {
 
                         <ul class="dropdown-menu">
                             <li class="px-3 py-1 font-weight-500">Add Filter</li>
-                            <li class="dropdown-item" @click="blocks.push({id: make_id(), type: 'backend'})">
+                            <li class="dropdown-item" @click="handle_add_filter_block('${page_constants.backend_name}')">
                                 <span class="pl-2">Backend</span>
                             </li>
-                            <li class="dropdown-item" @click="blocks.push({id: make_id(), type: 'ui'})">
+                            <li class="dropdown-item" @click="handle_add_filter_block('${page_constants.ui_name}')">
                                 <span class="pl-2">UI</span>
                             </li>
                         </ul>
@@ -462,15 +530,18 @@ const BuilderFilter = {
             </div>
             <hr class="my-0">
             <div class="builder_filter_blocks">
-                <div v-for="({id, type}, index) in blocks" :key="id">
+                <div v-for="({id, type, is_loading}, index) in blocks" :key="id">
                     <hr class="my-0" v-if="index > 0">
+                    [[ {id, type, is_loading} ]]
                     <FilterBlock
                        :idx="index"
                        :block_id="id"
                        :block_type="type"
+                       :is_loading="is_loading"
                        :transaction_options="type === 'backend' ? backend_options : ui_options"
-                       :metric_options="Object.values(metrics[type]) || []"
+                       :metric_options="Object.keys(metrics[type]) || []"
                        @remove="handle_remove"
+                       @apply="handle_apply"
                     >
                     </FilterBlock>
                 </div> 
