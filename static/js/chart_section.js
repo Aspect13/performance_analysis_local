@@ -287,7 +287,7 @@ const ChartSection = {
                     tests.at(-1).start_time,
                     this.max_test_on_chart
                 )
-                return group_data_by_timeline(tests, time_groups, this.selected_metric_ui)
+                return group_data_by_timeline(tests, time_groups, {ui_metric_key: this.selected_metric_ui})
             } else {
                 return group_data(tests, this.max_test_on_chart, {ui_metric_key: this.selected_metric_ui})
             }
@@ -320,6 +320,7 @@ const ChartSection = {
             <TextToggle
                 v-model="axis_type"
                 :labels='["categorical", "time"]'
+                radio_group_name="chart_group_axis_type"
             ></TextToggle>
         </label>
     </div>

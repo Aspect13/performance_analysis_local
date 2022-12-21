@@ -85,7 +85,9 @@ class API(Resource):
         if 'ui_performance' in data['unique_groups']:
             ui_performance_builder_data = self.module.context.rpc_manager.timeout(
                 3
-            ).ui_performance_compile_builder_data(project.id, data['tests'])
+            ).ui_performance_compile_builder_data(project.id, filter(
+                lambda x: x['group'] == 'ui_performance', data['tests']
+            ))
             # merge dataset data with test data
             all_ui_datasets = ui_performance_builder_data.pop('datasets')
             for i in data['tests']:

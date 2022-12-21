@@ -167,6 +167,7 @@
         <div class="card-header d-inline-flex">
             <h3>Comparison builder</h3>
             <div class="ml-3">
+                {% if 'backend_performance' in comparison_data["unique_groups"].keys() %}
                 <div class="selectpicker-titled">
                     <span class="font-h6 font-semibold px-3 item__left text-uppercase">Time aggregation</span>
                     <select class="selectpicker flex-grow-1" data-style="item__right"
@@ -177,16 +178,17 @@
                         <option value="1m">1m</option>
                     </select>
                 </div>
+                {% endif %}
             </div>
         </div>
         <div class="card-body d-flex">
-            <div class="flex-grow-1" style="max-width: 100%">
+            <div class="flex-grow-1">
                 <canvas id="builder_chart"></canvas>
             </div>
 
             <Builder-Filter
                     :unique_groups='{{ comparison_data["unique_groups"] | tojson }}'
-                    :ui_performance_builder_data='{{ comparison_data["ui_performance_builder_data"] | tojson }}'
+                    :ui_performance_builder_data='{{ comparison_data["ui_performance_builder_data"] | default({}) | tojson }}'
                     :tests='{{ tests }}'
             ></Builder-Filter>
         </div>
@@ -196,7 +198,12 @@
             @register="register"
             instance_name="table_comparison"
             header='Comparison Builder Summary'
-            :table_attributes='{"data-page-size": 10, "data-side-pagination": "client"}'
+            :table_attributes='{
+                "data-page-size": 10,
+                "data-side-pagination": "client",
+                "data-page-list": [10, 25, 50, 100],
+                "data-pagination-parts": ["pageInfo", "pageSize", "pageList"]
+            }'
     >
         <template #actions="{master}">
 
@@ -213,19 +220,26 @@
             >
                 Start
             </th>
-            <th scope="col" data-sortable="true" data-field="selector_name">
-                Transaction/request/page action
+            <th scope="col" data-sortable="true" data-field="page">
+                Action
             </th>
-            <th scope="col" data-sortable="true" data-field="selector_value">
+            <th scope="col" data-sortable="true" data-field="source_block_id"
+            data-formatter="comparison_formatters.source_block_id">
+                source_block_id
+            </th>
+            <th scope="col" data-sortable="true" data-field="metric">
+                Metric
+            </th>
+            <th scope="col" data-sortable="true" data-field="value">
                 Value
             </th>
-            <th scope="col" data-sortable="true" data-field="selector_value">
+            <th scope="col" data-sortable="true" data-field="value">
                 Aggregation min
             </th>
-            <th scope="col" data-sortable="true" data-field="selector_value">
+            <th scope="col" data-sortable="true" data-field="value">
                 Aggregation mean
             </th>
-            <th scope="col" data-sortable="true" data-field="selector_value">
+            <th scope="col" data-sortable="true" data-field="value">
                 Aggregation max
             </th>
         </template>

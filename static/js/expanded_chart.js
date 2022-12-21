@@ -101,7 +101,7 @@ const ExpandedChart = {
                 if (this.time_axis_type) {
                     // we assume that tests are sorted asc by time
                     aggregated_data = this.get_aggregated_dataset(
-                        group_data_by_timeline(test_data, this.time_groups, this.selected_metric_ui)
+                        group_data_by_timeline(test_data, this.time_groups, {ui_metric_key: this.selected_metric_ui})
                     )
                 } else {
                     aggregated_data = this.get_aggregated_dataset(
@@ -198,7 +198,7 @@ const ExpandedChart = {
         aggregated_data() {
             if (this.time_axis_type) {
                 return this.get_aggregated_dataset(
-                    group_data_by_timeline(this.filtered_tests, this.time_groups, this.selected_metric_ui)
+                    group_data_by_timeline(this.filtered_tests, this.time_groups, {ui_metric_key: this.selected_metric_ui})
                 )
             } else {
                 return this.get_aggregated_dataset(
@@ -274,6 +274,7 @@ const ExpandedChart = {
                         <TextToggle
                             v-model="dataset_type"
                             :labels='["aggregated", "split by test"]'
+                            radio_group_name="expanded_dataset_type"
                         ></TextToggle>
                     </label>
                     <div class="selectpicker-titled">

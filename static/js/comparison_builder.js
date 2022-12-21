@@ -9,22 +9,35 @@ const chart_options = {
         // },
         plugins: {
             legend: {
-                display: true
+                display: true,
+                onHover: (event, legendItem, legend) => {
+                    // console.log(event, legendItem, legend)
+                    legend.chart.data.datasets[legendItem.datasetIndex].radius = 12
+                    legend.chart.update()
+                },
+                onLeave: (event, legendItem, legend) => {
+                    // console.log(event, legendItem, legend)
+                    legend.chart.data.datasets[legendItem.datasetIndex].radius = 6
+                    legend.chart.update()
+                },
+                labels: {
+                    usePointStyle: true
+                },
             },
             title: {
                 display: false
             },
-      tooltip: {
-        callbacks: {
-          // afterTitle: (tooltip_item) => {
-          //     console.log('tti', tooltip_item)
-          //     return 'qwerty\nasdf\t123'
-          // },
-            beforeLabel: ({raw}) => `${raw.tooltip.test_name}(${raw.tooltip.test_id})\nenv: '${raw.tooltip.test_env}';\tloop: ${raw.tooltip.loop}`,
-            afterLabel: ({raw}) => `page: ${raw.tooltip.page}\n`,
-            label: ({raw, formattedValue}) => `${raw.tooltip.metric}: ${formattedValue}`
-        }
-      }
+            tooltip: {
+                callbacks: {
+                    // afterTitle: (tooltip_item) => {
+                    //     console.log('tti', tooltip_item)
+                    //     return 'qwerty\nasdf\t123'
+                    // },
+                    beforeLabel: ({raw}) => `${raw.tooltip.test_name}(${raw.tooltip.test_id})\nenv: '${raw.tooltip.test_env}';\tloop: ${raw.tooltip.loop}`,
+                    afterLabel: ({raw}) => `page: ${raw.tooltip.page}\n`,
+                    label: ({raw, formattedValue}) => `${raw.tooltip.metric}: ${formattedValue}`
+                }
+            }
         },
         scales: {
             x: {
@@ -48,7 +61,7 @@ const chart_options = {
             y: {
                 type: 'linear',
                 position: 'left',
-                text: 'Y label here',
+                // text: 'Y label here',
                 display: true,
                 grid: {
                     display: true,
@@ -59,184 +72,72 @@ const chart_options = {
                 //     count: 10
                 // }
             },
-            // active_users: {
-            //     type: 'linear',
-            //     position: 'right',
-            //     min: 0,
-            //     grid: {
-            //         display: false,
-            //         drawOnChartArea: false,
-            //     },
-            //     // ticks: {
-            //     //     count: 10
-            //     // }
-            // }
         }
     },
-    // plugins: []
 }
 
-
-// const FilterDropdown = {
-//     delimiters: ['[[', ']]'],
-//     // props: {
-//     //     itemsList: {
-//     //         default: () => []
-//     //     },
-//     // },
-//     props: ['items'],
-//     data() {
-//         return {
-//             // refSearchId: 'refSearchCbx'+Math.round(Math.random() * 1000),
-//             // refDropdownId: 'refDropdown'+Math.round(Math.random() * 1000),
-//             // closeOnItem: true,
-//             // clickedItem: {
-//             //     title: '',
-//             //     isChecked: false,
-//             // },
-//             // foundedItems: [...this.itemsList],
-//             // classTitle: 'complex-list_filled',
-//             selected_items: [],
-//             search_text: '',
-//         }
-//     },
-//     computed: {
-//         isAllSelected() {
-//             return (this.selected_items.length < this.items.length) && this.selected_items.length > 0
-//         },
-//         title_class() {
-//             if (this.selected_items.length === 1) {
-//                 return 'complex-list_filled'
-//             } else if (this.selected_items.length === 0) {
-//                 return 'complex-list_empty'
-//             } else if (this.selected_items.length > 1) {
-//                 return 'complex-list_filled'
-//             }
-//         },
-//         tite_text() {
-//             if (this.selected_items.length === 1) {
-//                 return this.selected_items[0]
-//             } else if (this.selected_items.length === 0) {
-//                 return 'Select something'
-//             } else if (this.selected_items.length > 1) {
-//                 return `${this.selected_items.length} items selected`
-//             }
-//         },
-//         filtered_items() {
-//             if (this.search_text === '') {
-//                 return this.items
-//             }
-//             return this.items.filter(i => i.name.startsWith(this.search_text))
-//         }
-//     },
-//     // watch: {
-//     //     selectedItems: function () {
-//     //         this.$refs[this.refSearchId].checked = this.selectedItems.length === this.foundedItems.length ? true : false;
-//     //     }
-//     // },
-//     // mounted() {
-//     //     $(".dropdown-menu.close-outside").on("click", function (event) {
-//     //         event.stopPropagation();
-//     //     });
-//     // },
-//     methods: {
-//         // handlerSelectAll() {
-//         //     if (this.selectedItems.length !== this.foundedItems.length) {
-//         //         this.selectedItems = [...this.foundedItems];
-//         //         // this.$refs[this.refDropdownId].forEach(el => {
-//         //         //     el.checked = true;
-//         //         // })
-//         //     } else {
-//         //         this.selectedItems.splice(0);
-//         //         this.$refs[this.refDropdownId].forEach(el => {
-//         //             el.checked = false;
-//         //         })
-//         //     }
-//         //     this.$emit('select-items', this.selectedItems);
-//         // },
-//         // setClickedItem(title, { target: { checked }}) {
-//         //     this.selectedItems = checked ?
-//         //         [...this.selectedItems, title] :
-//         //         this.selectedItems.filter(item => item !== title);
-//         //     this.$emit('select-items', this.selectedItems);
-//         // },
-//
-//         // search_item({ target: { value }}) {
-//         //     this.selectedItems = [];
-//         //     this.$refs[this.refDropdownId].forEach(el => {
-//         //         el.checked = false;
-//         //     })
-//         //     if (value) {
-//         //         this.foundedItems = this.itemsList.filter(metric => {
-//         //             return metric.toUpperCase().includes(value.toUpperCase())
-//         //         })
-//         //     } else {
-//         //         this.foundedItems  = [...this.itemsList]
-//         //     }
-//         // }
-//     },
-//     template: `
-//         <div class="complex-list">
-//             <button class="btn btn-select dropdown-toggle text-left w-100" type="button"
-//                 data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-//                 <span class="d-inline-block"
-//                     :class="title_class"
-//                 >
-//                     [[ tite_text ]]
-//                 </span>
-//             </button>
-//             <div class="dropdown-menu close-outside">
-//                 <div class="px-3 pb-2 search-group">
-//                     <div class="custom-input custom-input_search__sm position-relative">
-//                         <input type="text" placeholder="Search"
-//                             v-model="search_text"
-//                         />
-//                         <img src="/design-system/static/assets/ico/search.svg" class="icon-search position-absolute">
-//                     </div>
-//                 </div>
-//                 <div class="dropdown-item dropdown-menu_item d-flex align-items-center">
-//                    <label
-//                         class="mb-0 w-100 d-flex align-items-center custom-checkbox"
-//                         :class="{ 'custom-checkbox__minus': isAllSelected }">
-//                         <input type="checkbox"
-//                             @click="handlerSelectAll"
-//                         >
-//                         <span class="w-100 d-inline-block ml-3">All</span>
-//                    </label>
-//                 </div>
-//                 <ul class="my-0" style="overflow: scroll; height: 183px;">
-//                     <li class="dropdown-item dropdown-menu_item d-flex align-items-center"
-//                         v-for="item in filtered_items"
-//                         :key="item"
-//                     >
-//                         <label class="mb-0 w-100 d-flex align-items-center custom-checkbox">
-//                             <input type="checkbox">
-//                             <span class="w-100 d-inline-block ml-3">[[ item ]]</span>
-//                         </label>
-//                     </li>
-//                 </ul>
-//             </div>
-//         </div>
-//     `
-// }
-
-// const check_for_dataset = () => {
-//     window.charts.builder =
-// }
-
+// constants and public functions
+const JOIN_CHAR = ' | '
+const get_random_color = () => {
+    const rnd = () => Math.floor(Math.random() * 255)
+    return `rgb(${rnd()}, ${rnd()}, ${rnd()})`
+}
+const builder_metrics = {
+    [page_constants.ui_name]: {
+        load_time: {name: 'Load Time', color: '#ff0000'},
+        dom: {name: 'DOM', color: '#00ff00'},
+        tti: {name: 'tti', color: '#0000ff'},
+        fcp: {name: 'fcp', color: undefined},
+        lcp: {name: 'lcp', color: undefined},
+        cls: {name: 'cls', color: undefined},
+        tbt: {name: 'tbt', color: undefined},
+        fvc: {name: 'fvc', color: undefined},
+        lvc: {name: 'lvc', color: undefined},
+    },
+    [page_constants.backend_name]: {
+        dummy1: {name: 'Dummy 1', color: '#0ac'},
+        dummy2: {name: 'Dummy 2', color: '#d83'},
+    }
+}
 const clear_block_filter = (block_id, update_chart = true) => {
-    window.charts.builder.data.datasets = window.charts.builder.data.datasets.filter(ds =>
+    // clear from chart
+    window.chart_builder.data.datasets = window.chart_builder.data.datasets.filter(ds =>
         ds.source_block_id !== block_id
     )
-    update_chart && window.charts.builder.update()
+    update_chart && window.chart_builder.update()
+}
+const get_pages_to_display = (test, page_selections) => page_selections.reduce((accum, option) => {
+    if (option.includes(JOIN_CHAR)) {
+        const [test_name, test_env, page_name] = option.split(JOIN_CHAR)
+        if (test_name === test.name && test_env === test.test_env) {
+            accum.push(page_name)
+        }
+    } else {
+        accum.push(option)
+    }
+    return accum
+}, [])
+
+const clear_filter_blocks_from_table = block_ids => {
+    V.registered_components.table_comparison.table_action('remove',
+        {field: 'source_block_id', values: block_ids}
+    )
 }
 
+var comparison_formatters = {
+    source_block_id(value, row) {
+        // ('#1671449291816')[0].scrollIntoView({behavior: "smooth", block: "start"})
+        return `<a href="#${value}">${value}</a>`
+    }
+}
+
+// components
 const FilterBlock = {
     delimiters: ['[[', ']]'],
     // components: {
     //     'FilterDropdown': FilterDropdown,
     // },
-    props: ['idx', 'block_id', 'block_type', 'transaction_options', 'metric_options', 'is_loading'],
+    props: ['idx', 'block_id', 'block_type', 'action_options', 'metric_options', 'is_loading'],
     emits: ['remove', 'apply'],
     data() {
         return {
@@ -247,35 +148,47 @@ const FilterBlock = {
     },
     methods: {
         handle_apply_click() {
-            // this.is_loading = true
-            // setTimeout(() => this.is_loading = false, 4000)
-            console.log(this.$data)
             this.$emit('apply', this.idx, this.selected_transactions, this.selected_metrics)
-            // this.is_loading = false
         },
 
         handle_remove() {
             this.$emit('remove', this.idx)
         }
     },
+    computed: {
+        colored_metric_options() {
+            return Object.entries(this.metric_options).map(([k, {name, color}]) => {
+                console.log(k, name, color)
+
+                return {
+                    name,
+                    data_key: k,
+                    // html: `<span style="color: ${color || '#000'}" class="w-100 d-inline-block ml-3">${name}</span>`,
+                    html: `<span class="w-100 d-inline-block ml-3">${name}<span class="ml-1 circle" style="border-color: ${color}" ></span></span>`,
+                }
+            })
+        },
+        multiselect_title() {
+            return this.block_type === page_constants.backend_name ? 'Transactions/Requests' : 'Pages/Actions'
+        }
+    },
     template: `
-    <div class="d-flex flex-grow-1 p-3 align-items-center">
+    <div class="d-flex flex-grow-1 p-3 align-items-center" :id="block_id">
         <div class="d-flex flex-column flex-grow-1">
             <p class="font-h5 font-bold mb-1 text-gray-800">
-                [[ block_type === 'backend' ? 'Transactions/Requests' : 'Pages/Actions' ]]
+                [[ multiselect_title ]]
             </p>
             <MultiselectDropdown
-                :list_items="transaction_options"
+                :list_items="action_options"
                 v-model="selected_transactions"
                 placeholder="Select items"
-                button_class="btn btn-select dropdown-toggle d-inline-flex align-items-center"
             ></MultiselectDropdown>
             <p class="font-h5 font-bold my-1 text-gray-800">Metrics</p>
             <MultiselectDropdown
-                :list_items="metric_options"
+                :list_items="colored_metric_options"
                 v-model="selected_metrics"
                 placeholder="Select metrics"
-                button_class="btn btn-select dropdown-toggle d-inline-flex align-items-center"
+                return_key="data_key"
             ></MultiselectDropdown>
             <div class="pt-3">
                 <button class="btn btn-secondary"
@@ -298,14 +211,6 @@ const FilterBlock = {
     `
 }
 
-// const BACKEND_OPTIONS = ['bk1', 'bk2', 'bk3']
-// const UI_OPTIONS = ['ui_1', 'ui_2', 'ui1']
-const JOIN_CHAR = ' | '
-const get_random_color = () => {
-    const rnd = () => Math.floor(Math.random() * 255)
-    return `rgb(${rnd()}, ${rnd()}, ${rnd()})`
-}
-
 const BuilderFilter = {
     delimiters: ['[[', ']]'],
     components: {
@@ -315,27 +220,10 @@ const BuilderFilter = {
     data() {
         return {
             blocks: [],
-            metrics: {
-                [page_constants.ui_name]: {
-                    'Load Time': 'load_time',
-                    dom: 'dom',
-                    tti: 'tti',
-                    fcp: 'fcp',
-                    lcp: 'lcp',
-                    cls: 'cls',
-                    tbt: 'tbt',
-                    fvc: 'fvc',
-                    lvc: 'lvc',
-                },
-                [page_constants.backend_name]: {
-                    'Dummy 1': 'dummy1',
-                    'Dummy 2': 'dummy2'
-                }
-            },
             backend_options: [],
             ui_options: [],
             is_loading: false,
-            all_tests_backend_requests: ['dummy1', 'dummy2'],
+            all_tests_backend_requests: ['dummy_request_1', 'dummy_request_2'],
             all_tests_ui_pages: [],
             earliest_date: new Date()
         }
@@ -352,20 +240,23 @@ const BuilderFilter = {
         // chart_options.data = {
         //     labels: Array.from(Array(max_x_axis_labels)).map((_, i) => `step ${i}`)
         // }
-        window.charts.builder = new Chart('builder_chart', chart_options)
+        window.chart_builder = new Chart('builder_chart', chart_options)
+        $('html').css({'scroll-behavior': 'smooth'}) // todo: maybe we don't need that
     },
     methods: {
         handle_remove(idx) {
             const {id: block_id} = this.blocks.splice(idx, 1)[0]
             clear_block_filter(block_id)
+            clear_filter_blocks_from_table([block_id])
         },
         make_id() {
             return new Date().valueOf()
         },
         handle_clear_all() {
-            this.blocks.forEach(({id}) => clear_block_filter(id, false))
+            window.chart_builder.data.datasets = []
+            window.chart_builder.update()
+            this.$root.registered_components.table_comparison.table_action('removeAll')
             this.blocks = []
-            window.charts.builder.update()
         },
         set_options() {
             Object.entries(this.unique_groups).forEach(([group, i]) => {
@@ -393,94 +284,111 @@ const BuilderFilter = {
                 }
             })
         },
-        handle_apply(block_index, selected_pages, selected_metrics) {
-            // window.charts.builder.data.datasets
-            const block_data = this.blocks[block_index]
-            block_data.is_loading = true
-            const get_pages_to_display = test => selected_pages.reduce((accum, option) => {
-                const [test_name, test_env, page_name] = option.split(JOIN_CHAR)
-                if (test_name === test.name && test_env === test.test_env) {
-                    accum.push(page_name)
-                }
-                return accum
-            }, [])
+        make_backend_data(test, block_data, selected_actions, selected_metrics) {
+            return [[], []]
+        },
+        make_ui_data(test, block_data, selected_actions, selected_metrics) {
             let datasets = []
+            let table_data = []
+            const pages = get_pages_to_display(test, selected_actions)
+            pages.forEach(page => {
+                Object.entries(test.datasets[page]).forEach(([loop_id, ds]) => {
+                    const metrics_data = selected_metrics.map(metric_data_key => {
+                        // const metric_data_key = builder_metrics[block_data.type][i]
+                        const time_delta = new Date(ds['timestamp']) - new Date(test.start_time)
+                        const {name, color} = builder_metrics[block_data.type][metric_data_key]
+                        return {
+                            x: new Date(this.earliest_date.valueOf() + time_delta),
+                            y: ds[metric_data_key],
+                            tooltip: {
+                                test_name: test.name,
+                                test_env: test.test_env,
+                                test_id: test.id,
+                                loop: loop_id,
+                                metric: name,
+                                page: page,
+                            },
+                            border_color: color
+                        }
+
+                    })
+                    const dataset = {
+                        label: `${test.name}(id:${test.id}) - ${page}`,
+                        data: metrics_data,
+                        fill: true,
+                        borderColor: metrics_data.map(i => i.border_color || '#ffffff'),
+                        borderWidth: 2,
+                        backgroundColor: get_random_color(),
+                        // tension: 0.1,
+                        type: 'scatter',
+                        radius: 6,
+                        // hidden: true,
+                        source_block_id: block_data.id
+                    }
+                    console.log('dataset', dataset)
+                    datasets.push(dataset)
+                    // x = {
+                    //     "x": "2022-12-06T13:18:45.000Z",
+                    //     "y": 2304,
+                    //     "tooltip": {
+                    //         "test_name": "ui_test_sitespeed",
+                    //         "test_env": "3loops",
+                    //         "test_id": 8,
+                    //         "loop": "1",
+                    //         "metric": "load_time",
+                    //         "page": "Barack_Obama"
+                    //     },
+                    //     "border_color": "#ff0000"
+                    // }
+                    table_data = [...table_data, ...dataset.data.map(dsi => ({
+                        test_id: test.id,
+                        name: test.name,
+                        start_time: dsi.x,
+                        page: page,
+                        metric: dsi.tooltip.metric,
+                        source_block_id: block_data.id,
+                        value: dsi.y
+                    }))]
+                })
+            })
+            return [datasets, table_data]
+        },
+        handle_apply(block_index, selected_actions, selected_metrics) {
+            const block_data = this.blocks[block_index]
+            // block_data.is_loading = true
+
+            let all_datasets = []
+            let all_table_data = []
             this.tests.forEach(test => {
                 if (test.group === block_data.type) {
-                    const pages = get_pages_to_display(test)
-                    pages.forEach(page => {
-                        Object.entries(test.datasets[page]).forEach(([loop_id, ds]) => {
-                            const metrics_data = selected_metrics.map(i => {
-                                const metric_data_key = this.metrics[block_data.type][i]
-                                const time_delta = new Date(ds['timestamp']) - new Date(test.start_time)
-                                return {
-                                    x: new Date(this.earliest_date.valueOf() + time_delta),
-                                    y: ds[metric_data_key],
-                                    tooltip: {
-                                        test_name: test.name,
-                                        test_env: test.test_env,
-                                        test_id: test.id,
-                                        loop: loop_id,
-                                        metric: i,
-                                        page: page
-                                    }
-                                }
-
-                            })
-                            const color = get_random_color()
-                            const dataset = {
-                                label: `${test.name}(id:${test.id}) - ${page}`,
-                                data: metrics_data,
-                                fill: true,
-                                borderColor: color,
-                                backgroundColor: color,
-                                // tension: 0.1,
-                                type: 'scatter',
-                                radius: 4,
-                                // hidden: true,
-                                source_block_id: block_data.id
-                            }
-                            console.log('dataset', dataset)
-                            datasets.push(dataset)
-                            // datasets = [...datasets, ...dataset]
-                        })
-                    })
-                    // Object.entries(test.datasets).forEach(([loop_id, ds]) => {
-                    //     const metrics_datasets = selected_metrics.map(i => {
-                    //         const metric_data_key = this.metrics[block_data.type][i]
-                    //         const data = ds[metric_data_key].map((item, index) => {
-                    //             const time_delta = new Date(ds['timestamp'][index]) -
-                    //                 new Date(ds['timestamp'][0])
-                    //             return {
-                    //                 x: new Date(this.earliest_date.valueOf() + time_delta),
-                    //                 y: item
-                    //             }
-                    //         }) // todo: splice data from selected pages
-                    //         const dataset = {
-                    //             label: `Loop[${loop_id}]: ${i}`,
-                    //             data: data,
-                    //             // fill: false,
-                    //             borderColor: get_random_color(),
-                    //             // tension: 0.1,
-                    //             type: 'scatter',
-                    //             // hidden: true,
-                    //             source_block_id: new Set().add(block_data.id)
-                    //         }
-                    //         console.log('dataset', dataset)
-                    //         return dataset
-                    //     })
-                    //     datasets = [...datasets, ...metrics_datasets]
-                    // })
+                    let datasets, table_data
+                    switch (block_data.type) {
+                        case page_constants.backend_name:
+                            [datasets, table_data] = this.make_backend_data(
+                                test, block_data, selected_actions, selected_metrics
+                            )
+                            break
+                        case page_constants.ui_name:
+                            [datasets, table_data] = this.make_ui_data(
+                                test, block_data, selected_actions, selected_metrics
+                            )
+                            break
+                        default:
+                            throw 'UNKNOWN DATA TYPE'
+                    }
+                    all_datasets = [...all_datasets, ...datasets]
+                    all_table_data = [...all_table_data, ...table_data]
                 }
             })
-            setTimeout(() => {
-                block_data.is_loading = false
-            }, 2000)
-            // block_data.is_loading = false
+            // setTimeout(() => {
+            //     block_data.is_loading = false
+            // }, 2000)
             clear_block_filter(block_data.id, false)
-            window.charts.builder.data.datasets = [...window.charts.builder.data.datasets, ...datasets]
+            window.chart_builder.data.datasets = [...window.chart_builder.data.datasets, ...all_datasets]
+            window.chart_builder.update()
 
-            window.charts.builder.update()
+            clear_filter_blocks_from_table([block_data.id])
+            this.$root.registered_components.table_comparison.table_action('append', all_table_data)
         },
         handle_add_filter_block(block_type = undefined) {
             if (block_type === undefined) {
@@ -491,6 +399,13 @@ const BuilderFilter = {
                 type: block_type,
                 is_loading: false
             })
+        },
+        get_action_options(type) {
+            return type === page_constants.backend_name ? this.backend_options : this.ui_options
+            // return builder_metrics[type] || {}
+        },
+        get_metric_options(type) {
+            return builder_metrics[type] || {}
         }
     },
     template: `
@@ -532,14 +447,13 @@ const BuilderFilter = {
             <div class="builder_filter_blocks">
                 <div v-for="({id, type, is_loading}, index) in blocks" :key="id">
                     <hr class="my-0" v-if="index > 0">
-                    [[ {id, type, is_loading} ]]
                     <FilterBlock
                        :idx="index"
                        :block_id="id"
                        :block_type="type"
                        :is_loading="is_loading"
-                       :transaction_options="type === 'backend' ? backend_options : ui_options"
-                       :metric_options="Object.keys(metrics[type]) || []"
+                       :action_options="get_action_options(type)"
+                       :metric_options="get_metric_options(type)"
                        @remove="handle_remove"
                        @apply="handle_apply"
                     >

@@ -8,3 +8,16 @@
     overflow: scroll;
     height: 100%;
 }
+
+#builder_chart {
+    max-width: 100%;
+}
+
+.circle {
+  height: 12px;
+  width: 12px;
+  background-color: #fff;
+  border-radius: 50%;
+  display: inline-block;
+  border: 2px solid;
+}
