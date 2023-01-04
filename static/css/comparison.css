@@ -14,10 +14,23 @@
 }
 
 .circle {
-  height: 12px;
-  width: 12px;
-  background-color: #fff;
-  border-radius: 50%;
-  display: inline-block;
-  border: 2px solid;
+    height: 12px;
+    width: 12px;
+    background-color: #fff;
+    border-radius: 50%;
+    display: inline-block;
+    border: 2px solid;
+}
+
+:target {
+    animation: highlight 1500ms ease-in-out;
+}
+
+@keyframes highlight {
+    0% {
+        background-color: var(--basic);
+    }
+    100% {
+        background-color: initial;
+    }
 }
