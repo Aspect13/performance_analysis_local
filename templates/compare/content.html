@@ -164,7 +164,7 @@
 
 
     <div class="card my-3">
-        <div class="card-header d-inline-flex">
+        <div class="card-header d-inline-flex card-header-padding-fix">
             <h3>Comparison builder</h3>
             <div class="ml-3">
                 {% if 'backend_performance' in comparison_data["unique_groups"].keys() %}
@@ -173,9 +173,12 @@
                     <select class="selectpicker flex-grow-1" data-style="item__right"
                             v-model="custom_data.time_aggregation"
                     >
-                        <option value="auto" selected>Auto</option>
+                        <option value="1s">1s</option>
+                        <option value="5s">5s</option>
                         <option value="30s">30s</option>
                         <option value="1m">1m</option>
+                        <option value="5m">5m</option>
+                        <option value="10m">10m</option>
                     </select>
                 </div>
                 {% endif %}
@@ -189,7 +192,11 @@
             <Builder-Filter
                     :unique_groups='{{ comparison_data["unique_groups"] | tojson }}'
                     :ui_performance_builder_data='{{ comparison_data["ui_performance_builder_data"] | default({}) | tojson }}'
+                    :backend_performance_builder_data='{{ comparison_data["backend_performance_builder_data"] | default({}) | tojson }}'
                     :tests='{{ tests }}'
+                    {% if 'backend_performance' in comparison_data["unique_groups"].keys() %}
+                    :backend_time_aggregation='custom_data.time_aggregation'
+                    {% endif %}
             ></Builder-Filter>
         </div>
     </div>
@@ -223,25 +230,25 @@
             <th scope="col" data-sortable="true" data-field="page">
                 Action
             </th>
-            <th scope="col" data-sortable="true" data-field="source_block_id"
-            data-formatter="comparison_formatters.source_block_id">
-                source_block_id
-            </th>
             <th scope="col" data-sortable="true" data-field="metric">
                 Metric
             </th>
             <th scope="col" data-sortable="true" data-field="value">
                 Value
             </th>
-            <th scope="col" data-sortable="true" data-field="value">
-                Aggregation min
+            <th scope="col" data-sortable="true" data-field="source_block_id"
+            data-formatter="comparison_formatters.source_block_id">
+                Source
             </th>
-            <th scope="col" data-sortable="true" data-field="value">
-                Aggregation mean
-            </th>
-            <th scope="col" data-sortable="true" data-field="value">
-                Aggregation max
-            </th>
+<!--            <th scope="col" data-sortable="true" data-field="value">-->
+<!--                Aggregation min-->
+<!--            </th>-->
+<!--            <th scope="col" data-sortable="true" data-field="value">-->
+<!--                Aggregation mean-->
+<!--            </th>-->
+<!--            <th scope="col" data-sortable="true" data-field="value">-->
+<!--                Aggregation max-->
+<!--            </th>-->
         </template>
     </Table-Card>
 </div>

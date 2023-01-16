@@ -107,7 +107,7 @@ const SummaryFilter = {
             selected_aggregation_backend: 'pct95',
             selected_aggregation_ui: 'mean',
             selected_metric_ui: 'total',
-            start_time: 'last_month',
+            start_time: 'all',
             end_time: undefined,
             selected_filters: [],
         }
@@ -252,9 +252,9 @@ const SummaryFilter = {
             }
             this.is_loading = false
         },
-        handle_apply_click() {
-            this.handle_filter_changed()
-        },
+        // handle_apply_click() {
+        //     this.handle_filter_changed()
+        // },
 
         handle_filter_changed() {
             vueVm.registered_components.table_reports?.table_action('load', this.filtered_tests)
@@ -292,9 +292,8 @@ const SummaryFilter = {
             switch (this.start_time) {
                 // todo: place real date frames here
                 case 'last_week':
-                    this.end_time = undefined
-                    return {start_time: '2021-09-23T15:42:59.108Z'}
                 case 'last_month':
+                case 'all':
                     this.end_time = undefined
                     return {start_time: '2021-09-23T15:42:59.108Z'}
                 default: // e.g. if start time is from timepicker
@@ -330,27 +329,6 @@ const SummaryFilter = {
                 sums: {}
             })
         },
-        // selected_aggregation_backend_mapped() {
-        //     return page_constants.aggregation_backend_name_map[this.selected_aggregation_backend]
-        //         || this.selected_aggregation_backend
-        // },
-        // selected_aggregation_ui_mapped() {
-        //     return aggregation_ui_name_map[this.selected_aggregation_ui]
-        //         || this.selected_aggregation_ui
-        // },
-        // selected_metric_ui_mapped() {
-        //     return aggregation_ui_name_map[this.selected_metric_ui]
-        //         || this.selected_metric_ui
-        // },
-
-        // tmp() {
-        //     return this.filtered_backend_tests.length > 0 && calculate_time_groups(
-        //         this.filtered_backend_tests.at(0).start_time,
-        //         this.filtered_backend_tests.at(-1).start_time,
-        //         this.max_test_on_chart,
-        //         false
-        //         ).map(i => i.toLocaleString())
-        // }
     },
     template: `
 <div>
@@ -478,25 +456,24 @@ const SummaryFilter = {
             <select class="selectpicker flex-grow-1" data-style="item__right"
                 v-model="start_time"
             >
+                <option value="all">All</option>
                 <option value="last_month">Last Month</option>
-                <option value="last_week">Last Week</option>
             </select>
         </div>
 
         <MultiselectDropdown
             variant="slot"
             :list_items='["Backend Aggregation", "UI Metric", "UI Aggregation"]'
-            :pre_selected_indexes='[0, 1, 2]'
             button_class="btn-icon btn-secondary"
             @change="selected_filters = $event"
         >
             <template #dropdown_button><i class="fa fa-filter"></i></template>
         </MultiselectDropdown>
 
-        <button class="btn btn-basic"
-            @click="handle_apply_click"
-            :disabled="is_loading"
-        >Apply</button>
+<!--        <button class="btn btn-basic"-->
+<!--            @click="handle_apply_click"-->
+<!--            :disabled="is_loading"-->
+<!--        >Apply</button>-->
     </div>
     
     <ColorfulCards

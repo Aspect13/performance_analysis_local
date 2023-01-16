@@ -33,6 +33,7 @@ class BackendAnalysisAggregations(AnalysisAggregations):
 class BackendAnalysisModel(BaseAnalysisModel):
     metrics: BackendAnalysisMetrics
     aggregations: Optional[BackendAnalysisAggregations] = {}
+    build_id: str
 
     @root_validator(pre=True)
     def set_nested_data(cls, values: dict) -> dict:

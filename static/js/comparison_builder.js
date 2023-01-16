@@ -87,16 +87,26 @@ const builder_metrics = {
         load_time: {name: 'Load Time', color: '#ff0000'},
         dom: {name: 'DOM', color: '#00ff00'},
         tti: {name: 'tti', color: '#0000ff'},
-        fcp: {name: 'fcp', color: undefined},
-        lcp: {name: 'lcp', color: undefined},
-        cls: {name: 'cls', color: undefined},
-        tbt: {name: 'tbt', color: undefined},
-        fvc: {name: 'fvc', color: undefined},
-        lvc: {name: 'lvc', color: undefined},
+        fcp: {name: 'fcp', color: get_random_color()},
+        lcp: {name: 'lcp', color: get_random_color()},
+        cls: {name: 'cls', color: get_random_color()},
+        tbt: {name: 'tbt', color: get_random_color()},
+        fvc: {name: 'fvc', color: get_random_color()},
+        lvc: {name: 'lvc', color: get_random_color()},
     },
     [page_constants.backend_name]: {
-        dummy1: {name: 'Dummy 1', color: '#0ac'},
-        dummy2: {name: 'Dummy 2', color: '#d83'},
+        total: {name: 'total', color: get_random_color()},
+        min: {name: 'min', color: get_random_color()},
+        max: {name: 'max', color: get_random_color()},
+        median: {name: 'median', color: get_random_color()},
+        pct90: {name: 'pct90', color: get_random_color()},
+        pct95: {name: 'pct95', color: get_random_color()},
+        pct99: {name: 'pct99', color: get_random_color()},
+        onexx: {name: 'onexx', color: get_random_color()},
+        twoxx: {name: 'twoxx', color: get_random_color()},
+        threexx: {name: 'threexx', color: get_random_color()},
+        fourxx: {name: 'fourxx', color: get_random_color()},
+        fivexx: {name: 'fivexx', color: get_random_color()}
     }
 }
 const clear_block_filter = (block_id, update_chart = true) => {
@@ -127,16 +137,13 @@ const clear_filter_blocks_from_table = block_ids => {
 var comparison_formatters = {
     source_block_id(value, row) {
         // ('#1671449291816')[0].scrollIntoView({behavior: "smooth", block: "start"})
-        return `<a href="#${value}">${value}</a>`
+        return `<a class="fa fa-file-arrow-up" href="#${value}"></a>`
     }
 }
 
 // components
 const FilterBlock = {
     delimiters: ['[[', ']]'],
-    // components: {
-    //     'FilterDropdown': FilterDropdown,
-    // },
     props: ['idx', 'block_id', 'block_type', 'action_options', 'metric_options', 'is_loading'],
     emits: ['remove', 'apply'],
     data() {
@@ -216,14 +223,14 @@ const BuilderFilter = {
     components: {
         'FilterBlock': FilterBlock,
     },
-    props: ['unique_groups', 'ui_performance_builder_data', 'tests'],
+    props: ['unique_groups', 'ui_performance_builder_data', 'backend_performance_builder_data', 'tests', 'backend_time_aggregation'],
     data() {
         return {
             blocks: [],
             backend_options: [],
             ui_options: [],
             is_loading: false,
-            all_tests_backend_requests: ['dummy_request_1', 'dummy_request_2'],
+            all_tests_backend_requests: [],
             all_tests_ui_pages: [],
             earliest_date: new Date()
         }
@@ -231,15 +238,23 @@ const BuilderFilter = {
     async mounted() {
 
         // const {datasets, page_names, earliest_date} = await this.fetch_ui_data()
-        const {page_names, earliest_date} = this.ui_performance_builder_data
+        const {page_names, earliest_date: ui_earliest_date} = this.ui_performance_builder_data
         this.all_tests_ui_pages = page_names
+        const {all_requests, earliest_date: backend_earliest_date} = this.backend_performance_builder_data
+        this.all_tests_backend_requests = all_requests
         this.set_options()
 
-        // window.tmp = this.tests  // todo: remove
-        this.earliest_date = new Date(earliest_date)
-        // chart_options.data = {
-        //     labels: Array.from(Array(max_x_axis_labels)).map((_, i) => `step ${i}`)
-        // }
+        if (ui_earliest_date === undefined && backend_earliest_date === undefined) {
+            console.error('Earliest date cannot be set')
+        } else if (ui_earliest_date === undefined) {
+            this.earliest_date = new Date(backend_earliest_date)
+        } else if (backend_earliest_date === undefined) {
+            this.earliest_date = new Date(ui_earliest_date)
+        } else {
+            this.earliest_date = new Date(ui_earliest_date) < new Date(backend_earliest_date) ?
+                new Date(ui_earliest_date) : new Date(backend_earliest_date)
+        }
+
         window.chart_builder = new Chart('builder_chart', chart_options)
         $('html').css({'scroll-behavior': 'smooth'}) // todo: maybe we don't need that
     },
@@ -285,7 +300,62 @@ const BuilderFilter = {
             })
         },
         make_backend_data(test, block_data, selected_actions, selected_metrics) {
-            return [[], []]
+            console.log('make_backend_data', test, block_data, selected_actions, selected_metrics)
+            let datasets = []
+            let table_data = []
+            const requests = get_pages_to_display(test, selected_actions)
+            console.log('requests', requests)
+            requests.forEach(request => {
+                if (
+                    test.datasets[this.backend_time_aggregation] !== undefined &&
+                    test.datasets[this.backend_time_aggregation][request] !== undefined
+                ) {
+                    const scoped_dataset = test.datasets[this.backend_time_aggregation][request]
+                    const metrics_data = selected_metrics.map(metric_data_key => {
+                        const time_delta = new Date(scoped_dataset.time) - new Date(test.start_time)
+                        const {name, color} = builder_metrics[block_data.type][metric_data_key]
+                        return {
+                            x: new Date(this.earliest_date.valueOf() + time_delta),
+                            y: scoped_dataset[metric_data_key],
+                            tooltip: {
+                                test_name: test.name,
+                                test_env: test.test_env,
+                                test_id: test.id,
+                                metric: name,
+                                request: request,
+                            },
+                            border_color: color
+                        }
+                    })
+                    const dataset = {
+                        label: `${test.name}(id:${test.id}) - ${request}`,
+                        data: metrics_data,
+                        fill: true,
+                        borderColor: metrics_data.map(i => i.border_color || '#ffffff'),
+                        borderWidth: 2,
+                        backgroundColor: get_random_color(),
+                        tension: 0.1,
+                        type: 'line',
+                        showLine: true,
+                        radius: 6,
+                        // hidden: true,
+                        source_block_id: block_data.id
+                    }
+                    console.log('dataset', dataset)
+                    datasets.push(dataset)
+                    table_data = [...table_data, ...dataset.data.map(dsi => ({
+                        test_id: test.id,
+                        name: test.name,
+                        start_time: dsi.x,
+                        page: request,
+                        metric: dsi.tooltip.metric,
+                        source_block_id: block_data.id,
+                        value: dsi.y
+                    }))]
+                }
+
+            })
+            return [datasets, table_data]
         },
         make_ui_data(test, block_data, selected_actions, selected_metrics) {
             let datasets = []
@@ -323,7 +393,8 @@ const BuilderFilter = {
                         type: 'scatter',
                         radius: 6,
                         // hidden: true,
-                        source_block_id: block_data.id
+                        source_block_id: block_data.id,
+                        showLine: false
                     }
                     console.log('dataset', dataset)
                     datasets.push(dataset)
@@ -465,4 +536,4 @@ const BuilderFilter = {
 }
 register_component('BuilderFilter', BuilderFilter)
 
-$(document).on('vue_init', () => V.custom_data.time_aggregation = 'auto')
+$(document).on('vue_init', () => V.custom_data.time_aggregation = '1s')

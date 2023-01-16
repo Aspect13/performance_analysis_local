@@ -83,16 +83,37 @@ class API(Resource):
             data['unique_groups'][k] = list(v)
 
         if 'ui_performance' in data['unique_groups']:
+            ui_only_tests = filter(
+                lambda x: x['group'] == 'ui_performance', data['tests']
+            )
             ui_performance_builder_data = self.module.context.rpc_manager.timeout(
                 3
-            ).ui_performance_compile_builder_data(project.id, filter(
-                lambda x: x['group'] == 'ui_performance', data['tests']
-            ))
+            ).ui_performance_compile_builder_data(project.id, list(ui_only_tests))
             # merge dataset data with test data
             all_ui_datasets = ui_performance_builder_data.pop('datasets')
             for i in data['tests']:
-                i['datasets'] = all_ui_datasets.get(i['id'])
+                datasets = all_ui_datasets.get(i['id'])
+                if datasets:
+                    i['datasets'] = datasets
             data['ui_performance_builder_data'] = ui_performance_builder_data
+
+        if 'backend_performance' in data['unique_groups']:
+            backend_only_tests = filter(
+                lambda x: x['group'] == 'backend_performance', data['tests']
+            )
+            try:
+                backend_performance_builder_data = self.module.context.rpc_manager.timeout(
+                    3
+                ).backend_performance_compile_builder_data(project.id, list(backend_only_tests))
+                # merge dataset data with test data
+                all_backend_datasets = backend_performance_builder_data.pop('datasets')
+                for i in data['tests']:
+                    datasets = all_backend_datasets.get(i['id'])
+                    if datasets:
+                        i['datasets'] = datasets
+                data['backend_performance_builder_data'] = backend_performance_builder_data
+            except Empty:
+                ...
 
 
         hash_name = self.__upload_to_json(project, data)

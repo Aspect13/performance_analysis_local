@@ -9,29 +9,12 @@ from tools import MinioClient, session_project
 from ..utils import process_query_result
 
 
-
-def get_analytics_data(tests: list) -> dict:
-    # from ...backend_performance.connectors.influx import get_sampler_types
-    from ...backend_performance.utils.report_utils import render_analytics_control
-    from ...backend_performance.models.api_reports import APIReport
-    chart_data = {}
-    for i in tests:
-        db_test = APIReport.query.get(i['id'])
-
-        # samplers = get_sampler_types(
-        #     db_test.project_id, db_test.build_id,
-        #     db_test.name, db_test.lg_type
-        # )
-        chart_data[db_test.id] = dict(render_analytics_control(db_test.requests))
-    return chart_data
-
-
 class Slot:
     @web.slot('performance_analysis_compare_content')
     def content(self, context, slot, payload):
         project = context.rpc_manager.call.project_get_or_404(project_id=session_project.get())
         file_hash = payload.request.args.get('source')
-        log.info('GET qwerty %s', payload.request.args.get('source'))
+        # log.info('GET qwerty %s', payload.request.args.get('source'))
         if not file_hash:
             return self.descriptor.render_template(
                 'compare/empty.html',
@@ -97,11 +80,6 @@ class Slot:
                 baselines[group][report.name] = {
                     report.test_env: report.dict(exclude={'total', 'failures'})
                 }
-
-        # comparison_data['baselines'] = baselines
-
-        # comparison_data['analytics_control'] = get_analytics_data(comparison_data['tests'])
-        # log.info('GET qwerty comparison_data %s', comparison_data)
 
         with context.app.app_context():
             return self.descriptor.render_template(
