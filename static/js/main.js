@@ -18,7 +18,7 @@ const get_mapped_name = (name, is_from_backend = undefined) => {
             if (page_constants.aggregation_backend_name_map[name]) {
                 return page_constants.aggregation_backend_name_map[name]
             } else if (page_constants.aggregation_ui_name_map[name]) {
-                return page_constants.aggregation_backend_name_map[name]
+                return page_constants.aggregation_ui_name_map[name]
             } else {
                 return name
             }

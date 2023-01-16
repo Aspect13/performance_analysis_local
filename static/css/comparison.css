@@ -34,3 +34,7 @@
         background-color: initial;
     }
 }
+
+.card-header-padding-fix {
+    padding: 20px 20px 20px 30px;
+}
