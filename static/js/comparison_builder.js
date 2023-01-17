@@ -259,7 +259,6 @@ const BuilderFilter = {
         }
     },
     async mounted() {
-
         // const {datasets, page_names, earliest_date} = await this.fetch_ui_data()
         const {page_names, earliest_date: ui_earliest_date} = this.ui_performance_builder_data
         this.all_tests_ui_pages = page_names
@@ -323,7 +322,6 @@ const BuilderFilter = {
             })
         },
         make_backend_data(request, block_data, tests, selected_metrics) {
-            console.log('make_backend_data', request, block_data, tests, selected_metrics)
             let datasets = []
             let table_data = []
             selected_metrics.forEach(metric => {
@@ -385,123 +383,6 @@ const BuilderFilter = {
             })
             return [datasets, table_data]
         },
-        make_backend_data_old_2(test, block_data, selected_actions, selected_metrics) {
-            console.log('make_backend_data', test, block_data, selected_actions, selected_metrics)
-            let datasets = []
-            let table_data = []
-            // const requests = get_pages_to_display(test, selected_actions)
-            console.log('selected_actions', selected_actions)
-            selected_metrics.forEach(metric => {
-                const requests_data = selected_actions.map(request => {
-                    if (
-                        test.datasets[this.backend_time_aggregation] !== undefined &&
-                        test.datasets[this.backend_time_aggregation][request] !== undefined
-                    ) {
-                        const scoped_dataset = test.datasets[this.backend_time_aggregation][request]
-                        const time_delta = new Date(scoped_dataset.time) - new Date(test.start_time)
-                        const {name, color} = builder_metrics[block_data.type][metric]
-                        return {
-                            x: new Date(this.earliest_date.valueOf() + time_delta),
-                            y: scoped_dataset[metric],
-                            tooltip: {
-                                test_name: test.name,
-                                test_env: test.test_env,
-                                test_id: test.id,
-                                metric: name,
-                                request: request,
-                            },
-                            border_color: color
-                        }
-                    }
-                })
-                const dataset = {
-                    label: metric,
-                    data: requests_data.sort((a, b) => {
-                        return a.x - b.x
-                    }),
-                    // fill: true,
-                    borderColor: requests_data.map(i => i.border_color || '#ffffff'),
-                    borderWidth: 2,
-                    backgroundColor: get_random_color(),
-                    tension: 0.4,
-                    type: 'line',
-                    showLine: true,
-                    radius: 3,
-                    // hidden: true,
-                    source_block_id: block_data.id
-                }
-                console.log('dataset', dataset)
-                datasets.push(dataset)
-                table_data = [...table_data, ...dataset.data.map(dsi => ({
-                    test_id: test.id,
-                    name: test.name,
-                    start_time: dsi.x,
-                    page: dsi.tooltip.request,
-                    metric: metric,
-                    source_block_id: block_data.id,
-                    value: dsi.y
-                }))]
-            })
-            return [datasets, table_data]
-        },
-        make_backend_data_old(test, block_data, selected_actions, selected_metrics) {
-            console.log('make_backend_data', test, block_data, selected_actions, selected_metrics)
-            let datasets = []
-            let table_data = []
-            const requests = get_pages_to_display(test, selected_actions)
-            console.log('requests', requests)
-            requests.forEach(request => {
-                if (
-                    test.datasets[this.backend_time_aggregation] !== undefined &&
-                    test.datasets[this.backend_time_aggregation][request] !== undefined
-                ) {
-                    const scoped_dataset = test.datasets[this.backend_time_aggregation][request]
-                    const metrics_data = selected_metrics.map(metric_data_key => {
-                        const time_delta = new Date(scoped_dataset.time) - new Date(test.start_time)
-                        const {name, color} = builder_metrics[block_data.type][metric_data_key]
-                        return {
-                            x: new Date(this.earliest_date.valueOf() + time_delta),
-                            y: scoped_dataset[metric_data_key],
-                            tooltip: {
-                                test_name: test.name,
-                                test_env: test.test_env,
-                                test_id: test.id,
-                                metric: name,
-                                request: request,
-                            },
-                            border_color: color
-                        }
-                    })
-                    const dataset = {
-                        label: `${test.name}(id:${test.id}) - ${request}`,
-                        data: metrics_data,
-                        fill: true,
-                        borderColor: metrics_data.map(i => i.border_color || '#ffffff'),
-                        borderWidth: 2,
-                        backgroundColor: get_random_color(),
-                        tension: 0.1,
-                        type: 'line',
-                        showLine: true,
-                        radius: 6,
-                        // hidden: true,
-                        source_block_id: block_data.id
-                    }
-                    console.log('dataset', dataset)
-                    datasets.push(dataset)
-                    table_data = [...table_data, ...dataset.data.map(dsi => ({
-                        test_id: test.id,
-                        name: test.name,
-                        start_time: dsi.x,
-                        page: request,
-                        metric: dsi.tooltip.metric,
-                        source_block_id: block_data.id,
-                        value: dsi.y
-                    }))]
-                }
-
-            })
-            return [datasets, table_data]
-        },
         make_ui_data(test, block_data, selected_actions, selected_metrics) {
             let datasets = []
             let table_data = []
@@ -543,19 +424,6 @@ const BuilderFilter = {
                     }
                     console.log('dataset', dataset)
                     datasets.push(dataset)
-                    // x = {
-                    //     "x": "2022-12-06T13:18:45.000Z",
-                    //     "y": 2304,
-                    //     "tooltip": {
-                    //         "test_name": "ui_test_sitespeed",
-                    //         "test_env": "3loops",
-                    //         "test_id": 8,
-                    //         "loop": "1",
-                    //         "metric": "load_time",
-                    //         "page": "Barack_Obama"
-                    //     },
-                    //     "border_color": "#ff0000"
-                    // }
                     table_data = [...table_data, ...dataset.data.map(dsi => ({
                         test_id: test.id,
                         name: test.name,
@@ -608,38 +476,6 @@ const BuilderFilter = {
                     throw 'UNKNOWN DATA TYPE'
             }
 
-            clear_block_filter(block_data.id, false)
-            window.chart_builder.data.datasets = [...window.chart_builder.data.datasets, ...all_datasets]
-            window.chart_builder.update()
-
-            clear_filter_blocks_from_table([block_data.id])
-            this.$root.registered_components.table_comparison.table_action('append', all_table_data)
-        },
-        handle_apply_old(block_index, selected_actions, selected_metrics) {
-            const block_data = this.blocks[block_index]
-            let all_datasets = []
-            let all_table_data = []
-            this.tests.forEach(test => {
-                if (test.group === block_data.type) {
-                    let datasets, table_data
-                    switch (block_data.type) {
-                        case page_constants.backend_name:
-                            [datasets, table_data] = this.make_backend_data(
-                                test, block_data, selected_actions, selected_metrics
-                            )
-                            break
-                        case page_constants.ui_name:
-                            [datasets, table_data] = this.make_ui_data(
-                                test, block_data, selected_actions, selected_metrics
-                            )
-                            break
-                        default:
-                            throw 'UNKNOWN DATA TYPE'
-                    }
-                    all_datasets = [...all_datasets, ...datasets]
-                    all_table_data = [...all_table_data, ...table_data]
-                }
-            })
             clear_block_filter(block_data.id, false)
             window.chart_builder.data.datasets = [...window.chart_builder.data.datasets, ...all_datasets]
             window.chart_builder.update()
