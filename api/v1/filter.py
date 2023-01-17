@@ -92,9 +92,10 @@ class API(Resource):
             # merge dataset data with test data
             all_ui_datasets = ui_performance_builder_data.pop('datasets')
             for i in data['tests']:
-                datasets = all_ui_datasets.get(i['id'])
-                if datasets:
-                    i['datasets'] = datasets
+                if i['group'] == 'ui_performance':
+                    datasets = all_ui_datasets.get(i['id'])
+                    if datasets:
+                        i['datasets'] = datasets
             data['ui_performance_builder_data'] = ui_performance_builder_data
 
         if 'backend_performance' in data['unique_groups']:
@@ -108,9 +109,10 @@ class API(Resource):
                 # merge dataset data with test data
                 all_backend_datasets = backend_performance_builder_data.pop('datasets')
                 for i in data['tests']:
-                    datasets = all_backend_datasets.get(i['id'])
-                    if datasets:
-                        i['datasets'] = datasets
+                    if i['group'] == 'backend_performance':
+                        datasets = all_backend_datasets.get(i['id'])
+                        if datasets:
+                            i['datasets'] = datasets
                 data['backend_performance_builder_data'] = backend_performance_builder_data
             except Empty:
                 ...
