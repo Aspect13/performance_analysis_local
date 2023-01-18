@@ -69,7 +69,8 @@ const chart_options = {
                 ticks: {
                     count: 10,
                     max: 10
-                }
+                },
+                display: false
             },
             y: {
                 type: 'linear',
@@ -345,6 +346,7 @@ const BuilderFilter = {
                                         test_id: test.id,
                                         metric: name,
                                         request: request,
+                                        real_start_time: scoped_dataset.time
                                     },
                                     border_color: color
                                 }
@@ -374,7 +376,7 @@ const BuilderFilter = {
                 table_data = [...table_data, ...dataset.data.map(dsi => ({
                     test_id: dsi.tooltip.test_id,
                     name: dsi.tooltip.test_name,
-                    start_time: dsi.x,
+                    start_time: dsi.tooltip.real_start_time,
                     page: dsi.tooltip.request,
                     metric: dsi.tooltip.metric,
                     source_block_id: block_data.id,
@@ -391,7 +393,7 @@ const BuilderFilter = {
                 Object.entries(test.datasets[page]).forEach(([loop_id, ds]) => {
                     const metrics_data = selected_metrics.map(metric_data_key => {
                         // const metric_data_key = builder_metrics[block_data.type][i]
-                        const time_delta = new Date(ds['timestamp']) - new Date(test.start_time)
+                        const time_delta = new Date(ds.timestamp) - new Date(test.start_time)
                         const {name, color} = builder_metrics[block_data.type][metric_data_key]
                         return {
                             x: new Date(this.earliest_date.valueOf() + time_delta),
@@ -403,6 +405,7 @@ const BuilderFilter = {
                                 loop: loop_id,
                                 metric: name,
                                 page: page,
+                                real_start_time: ds.timestamp
                             },
                             border_color: color
                         }
@@ -427,7 +430,7 @@ const BuilderFilter = {
                     table_data = [...table_data, ...dataset.data.map(dsi => ({
                         test_id: test.id,
                         name: test.name,
-                        start_time: dsi.x,
+                        start_time: dsi.tooltip.real_start_time,
                         page: page,
                         metric: dsi.tooltip.metric,
                         source_block_id: block_data.id,

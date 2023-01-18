@@ -489,8 +489,8 @@ const handle_click_compare = async () => {
         // redirect: 'manual'
     })
     if (response.redirected) {
-        // window.location.href = response.url
+        window.location.href = response.url
         // todo: remove
-        window.location.href = response.url + '&' + $.param({test: 1})
+        // window.location.href = response.url + '&' + $.param({test: 1})
     }
 }
